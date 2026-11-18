@@ -358,6 +358,28 @@
     .application-download { display:inline-block; width:max-content; text-decoration:none; border-radius:7px; padding:9px 12px; background:var(--navy); color:#fff; font-size:12px; font-weight:bold; }
     #applicationAdminMessage { margin:12px 0; font-size:13px; }
 
+    .job-admin { background:#fff; padding:22px; border:1px solid var(--border); border-radius:11px; }
+    .job-admin h3 { margin:0 0 8px; color:var(--navy); }
+    .job-admin p { color:var(--muted); font-size:13px; }
+    .job-form { display:grid; grid-template-columns:1fr 1fr; gap:13px; margin:18px 0 24px; }
+    .job-form label { display:block; font-size:12px; font-weight:bold; margin-bottom:6px; }
+    .job-form input,.job-form textarea,.job-form select { width:100%; padding:11px; border:1px solid var(--border); border-radius:7px; font:inherit; }
+    .job-form textarea { min-height:95px; resize:vertical; }
+    .job-form .wide { grid-column:1/-1; }
+    .job-form-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .job-form button,.job-actions button { border:0; border-radius:7px; padding:10px 14px; cursor:pointer; font-weight:bold; }
+    .job-save { background:var(--gold); color:var(--navy); }
+    .job-cancel { background:#edf0f5; color:var(--text); }
+    .job-list { display:grid; gap:12px; }
+    .job-row { border:1px solid var(--border); border-radius:9px; padding:16px; display:grid; gap:9px; }
+    .job-row h4 { margin:0; color:var(--navy); }
+    .job-meta { display:flex; gap:8px 15px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+    .job-actions { display:flex; gap:7px; flex-wrap:wrap; }
+    .job-edit { background:#edf0f5; color:var(--navy); }
+    .job-toggle { background:#fff1e2; color:#8b5c12; }
+    #jobAdminMessage { margin:12px 0; font-size:13px; }
+    @media(max-width:700px){ .job-form { grid-template-columns:1fr; } .job-form .wide { grid-column:auto; } }
+
     footer {
       padding: 20px 30px;
       color: var(--muted);
@@ -575,6 +597,58 @@
           </div>
         </div>
 
+        <div id="jobsSection" class="hidden">
+          <div class="job-admin">
+            <h3>Gestion des offres d'emploi</h3>
+            <p>Créez vos annonces, enregistrez-les en brouillon puis publiez-les lorsqu'elles sont prêtes.</p>
+            <form id="jobForm" class="job-form">
+              <input type="hidden" id="jobId">
+              <div class="wide">
+                <label for="jobTitle">Intitulé du poste *</label>
+                <input id="jobTitle" maxlength="180" required placeholder="Ex. Agent de sécurité">
+              </div>
+              <div>
+                <label for="jobLocation">Lieu</label>
+                <input id="jobLocation" maxlength="180" placeholder="Ex. Abidjan, Cocody">
+              </div>
+              <div>
+                <label for="jobContract">Type de contrat</label>
+                <input id="jobContract" maxlength="100" placeholder="Ex. CDD, CDI, Stage">
+              </div>
+              <div>
+                <label for="jobDeadline">Date limite de candidature</label>
+                <input id="jobDeadline" type="date">
+              </div>
+              <div>
+                <label for="jobEmail">E-mail de candidature</label>
+                <input id="jobEmail" type="email" maxlength="254" placeholder="recrutement@exemple.com">
+              </div>
+              <div class="wide">
+                <label for="jobDescription">Description du poste</label>
+                <textarea id="jobDescription" maxlength="6000" placeholder="Missions et responsabilités..."></textarea>
+              </div>
+              <div class="wide">
+                <label for="jobProfile">Profil recherché</label>
+                <textarea id="jobProfile" maxlength="4000" placeholder="Formation, expérience, compétences..."></textarea>
+              </div>
+              <div>
+                <label for="jobStatus">État de l'offre</label>
+                <select id="jobStatus">
+                  <option value="brouillon">Brouillon (non visible)</option>
+                  <option value="publiee">Publiée (visible sur le site)</option>
+                </select>
+              </div>
+              <div class="wide job-form-actions">
+                <button class="job-save" id="jobSubmit" type="submit">Enregistrer l'offre</button>
+                <button class="job-cancel hidden" id="jobCancel" type="button">Annuler la modification</button>
+              </div>
+            </form>
+            <div id="jobAdminMessage" role="status"></div>
+            <h3>Offres enregistrées</h3>
+            <div id="jobList" class="job-list"><p>Chargement des offres...</p></div>
+          </div>
+        </div>
+
         <div id="applicationsSection" class="hidden">
           <div class="application-admin">
             <h3>Gestion des candidatures</h3>
@@ -712,16 +786,19 @@
         const isHome = section === "Accueil";
         const isServices = section === "Services";
         const isApplications = section === "Candidatures";
+        const isJobs = section === "Offres d'emploi";
         document.getElementById("homeSection").classList.toggle("hidden", !isHome);
-        document.getElementById("otherSection").classList.toggle("hidden", isHome || isServices || isApplications);
+        document.getElementById("otherSection").classList.toggle("hidden", isHome || isServices || isApplications || isJobs);
         document.getElementById("servicesSection").classList.toggle("hidden", !isServices);
         document.getElementById("applicationsSection").classList.toggle("hidden", !isApplications);
+        document.getElementById("jobsSection").classList.toggle("hidden", !isJobs);
 
-        if (!isHome && !isServices && !isApplications) {
+        if (!isHome && !isServices && !isApplications && !isJobs) {
           document.getElementById("otherTitle").textContent = section;
         }
         if (isServices) loadAdminServices();
         if (isApplications) loadAdminApplications();
+        if (isJobs) loadAdminJobs();
       });
     });
 
@@ -896,6 +973,136 @@
         showApplicationMessage(error.message, true);
       }
     }
+
+
+    const jobForm = document.getElementById("jobForm");
+    const jobList = document.getElementById("jobList");
+    const jobMessage = document.getElementById("jobAdminMessage");
+
+    function showJobMessage(message, isError = false) {
+      jobMessage.textContent = message;
+      jobMessage.style.color = isError ? "var(--red)" : "var(--green)";
+    }
+
+    function dateOnly(value) {
+      if (!value) return "";
+      return String(value).slice(0, 10);
+    }
+
+    async function loadAdminJobs() {
+      jobList.innerHTML = "<p>Chargement des offres...</p>";
+      showJobMessage("");
+      try {
+        const response = await fetch("/api/admin/offres-emploi", { credentials:"same-origin" });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Impossible de charger les offres.");
+        const items = data.offres || [];
+        if (!items.length) {
+          jobList.innerHTML = "<p>Aucune offre enregistrée pour le moment.</p>";
+          return;
+        }
+        jobList.innerHTML = items.map(item => {
+          const statusLabel = item.statut === "publiee" ? "Publiée" : "Brouillon";
+          return `
+            <article class="job-row">
+              <h4>${escapeHtml(item.titre)}</h4>
+              <div class="job-meta">
+                <span>Lieu : ${escapeHtml(item.lieu || "Non précisé")}</span>
+                <span>Contrat : ${escapeHtml(item.type_contrat || "Non précisé")}</span>
+                <span>Date limite : ${escapeHtml(dateOnly(item.date_limite) || "Non précisée")}</span>
+                <span>État : ${statusLabel}</span>
+              </div>
+              <div class="job-actions">
+                <button class="job-edit" type="button" data-job-edit="${item.id}">Modifier</button>
+                <button class="job-toggle" type="button" data-job-toggle="${item.id}">${item.statut === "publiee" ? "Retirer du site" : "Publier"}</button>
+              </div>
+            </article>`;
+        }).join("");
+
+        jobList.querySelectorAll("[data-job-edit]").forEach(button => {
+          button.addEventListener("click", () => {
+            const item = items.find(entry => String(entry.id) === button.dataset.jobEdit);
+            if (!item) return;
+            document.getElementById("jobId").value = item.id;
+            document.getElementById("jobTitle").value = item.titre || "";
+            document.getElementById("jobLocation").value = item.lieu || "";
+            document.getElementById("jobContract").value = item.type_contrat || "";
+            document.getElementById("jobDeadline").value = dateOnly(item.date_limite);
+            document.getElementById("jobEmail").value = item.email_candidature || "";
+            document.getElementById("jobDescription").value = item.description || "";
+            document.getElementById("jobProfile").value = item.profil_recherche || "";
+            document.getElementById("jobStatus").value = item.statut || "brouillon";
+            document.getElementById("jobSubmit").textContent = "Enregistrer les modifications";
+            document.getElementById("jobCancel").classList.remove("hidden");
+            document.getElementById("jobTitle").focus();
+          });
+        });
+
+        jobList.querySelectorAll("[data-job-toggle]").forEach(button => {
+          button.addEventListener("click", async () => {
+            const item = items.find(entry => String(entry.id) === button.dataset.jobToggle);
+            if (!item) return;
+            await saveJob({
+              id:Number(item.id), titre:item.titre, lieu:item.lieu || "",
+              type_contrat:item.type_contrat || "", date_limite:dateOnly(item.date_limite),
+              email_candidature:item.email_candidature || "", description:item.description || "",
+              profil_recherche:item.profil_recherche || "",
+              statut:item.statut === "publiee" ? "brouillon" : "publiee"
+            }, true);
+          });
+        });
+      } catch (error) {
+        jobList.innerHTML = "<p>Erreur lors du chargement des offres.</p>";
+        showJobMessage(error.message, true);
+      }
+    }
+
+    async function saveJob(payload, silent = false) {
+      try {
+        const response = await fetch("/api/admin/offres-emploi", {
+          method:payload.id ? "PUT" : "POST",
+          credentials:"same-origin",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Enregistrement impossible.");
+        if (!silent) resetJobForm();
+        showJobMessage(data.message || "Offre enregistrée.");
+        await loadAdminJobs();
+      } catch (error) {
+        showJobMessage(error.message, true);
+      }
+    }
+
+    function resetJobForm() {
+      jobForm.reset();
+      document.getElementById("jobId").value = "";
+      document.getElementById("jobStatus").value = "brouillon";
+      document.getElementById("jobSubmit").textContent = "Enregistrer l'offre";
+      document.getElementById("jobCancel").classList.add("hidden");
+    }
+
+    jobForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const id = document.getElementById("jobId").value;
+      saveJob({
+        ...(id ? {id:Number(id)} : {}),
+        titre:document.getElementById("jobTitle").value.trim(),
+        lieu:document.getElementById("jobLocation").value.trim(),
+        type_contrat:document.getElementById("jobContract").value.trim(),
+        date_limite:document.getElementById("jobDeadline").value || null,
+        email_candidature:document.getElementById("jobEmail").value.trim(),
+        description:document.getElementById("jobDescription").value.trim(),
+        profil_recherche:document.getElementById("jobProfile").value.trim(),
+        statut:document.getElementById("jobStatus").value
+      });
+    });
+
+    document.getElementById("jobCancel").addEventListener("click", () => {
+      resetJobForm();
+      showJobMessage("");
+    });
 
     document.getElementById("applicationRefresh").addEventListener("click", loadAdminApplications);
 
