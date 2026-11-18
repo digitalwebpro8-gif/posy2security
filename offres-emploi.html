@@ -163,13 +163,15 @@
 <div class="section-kicker">Recrutement</div><h1>Offres d'emploi</h1>
 <p>Découvrez les opportunités professionnelles et rejoignez les équipes POSY2SECURITY.</p>
 </div></div><section class="recruit" id="offres">
-      <div class="container"><div><div class="section-kicker">Rejoignez nos équipes</div><h2>Vous souhaitez évoluer dans les métiers de la sécurité ?</h2><p>Faites-nous parvenir votre candidature et vos coordonnées.</p></div><a class="btn btn-gold" href="#contact">Proposer ma candidature →</a></div>
+      <div class="container"><div><div class="section-kicker">Rejoignez nos équipes</div><h2>Vous souhaitez évoluer dans les métiers de la sécurité ?</h2><p>Faites-nous parvenir votre candidature et vos coordonnées.</p></div><a class="btn btn-gold" href="#offres-publiees">Consulter les offres →</a></div>
     </section>
-<section class="empty-offers"><div class="container">
+<section class="empty-offers" id="offres-publiees"><div class="container">
 <div class="section-kicker">Opportunités</div>
-<h2>Les offres disponibles seront publiées ici.</h2>
-<p>Consultez régulièrement cette page pour découvrir les postes ouverts. Vous pouvez également nous contacter pour toute question relative au recrutement.</p>
-<a class="btn btn-gold" href="contact.html">Nous contacter →</a>
+<h2>Nos offres d'emploi</h2>
+<p>Retrouvez ici les postes actuellement ouverts au recrutement chez POSY2SECURITY.</p>
+<div id="offersList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;text-align:left">
+<p style="grid-column:1/-1;text-align:center">Chargement des offres d'emploi...</p>
+</div>
 </div></section></main>
 
 <footer><div class="container">
@@ -197,6 +199,42 @@ navLinks.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{
   menuBtn.textContent='☰';
 }));
 document.getElementById('year').textContent=new Date().getFullYear();
+async function loadPublicOffers(){
+  const list=document.getElementById('offersList');
+  try{
+    const response=await fetch('/api/offres-emploi');
+    const result=await response.json();
+    if(!response.ok || !result.success) throw new Error(result.message||'Chargement impossible');
+    const offers=Array.isArray(result.offres)?result.offres:[];
+    if(!offers.length){
+      list.innerHTML='<p style="grid-column:1/-1;text-align:center">Aucune offre d’emploi n’est actuellement disponible. Consultez régulièrement cette page.</p>';
+      return;
+    }
+    list.innerHTML=offers.map(offer=>{
+      const title=escapeOffer(offer.titre);
+      const location=escapeOffer(offer.lieu||'Non précisé');
+      const contract=escapeOffer(offer.type_contrat||'Non précisé');
+      const description=escapeOffer(offer.description||'');
+      const profile=escapeOffer(offer.profil_recherche||'');
+      const deadline=offer.date_limite?new Date(offer.date_limite+'T00:00:00').toLocaleDateString('fr-FR'):'Non précisée';
+      return '<article style="background:#fff;border:1px solid #e5e9ef;border-radius:8px;padding:26px;box-shadow:0 8px 25px rgba(15,35,65,.05)">'+
+        '<div style="color:#a17a2d;font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Recrutement</div>'+
+        '<h3 style="font-size:21px;color:#0b1730;margin-bottom:14px">'+title+'</h3>'+
+        '<p style="font-size:13px;color:#687386;margin-bottom:6px"><strong>Lieu :</strong> '+location+'</p>'+
+        '<p style="font-size:13px;color:#687386;margin-bottom:6px"><strong>Contrat :</strong> '+contract+'</p>'+
+        '<p style="font-size:13px;color:#687386;margin-bottom:15px"><strong>Date limite :</strong> '+escapeOffer(deadline)+'</p>'+
+        (description?'<p style="font-size:14px;color:#4d596b;margin-bottom:12px;white-space:pre-line">'+description+'</p>':'')+
+        (profile?'<p style="font-size:13px;color:#4d596b;white-space:pre-line"><strong>Profil recherché :</strong><br>'+profile+'</p>':'')+
+        '</article>';
+    }).join('');
+  }catch(error){
+    list.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#9b2c2c">Les offres ne peuvent pas être chargées pour le moment. Veuillez réessayer plus tard.</p>';
+  }
+}
+function escapeOffer(value){
+  return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+loadPublicOffers();
 const contactForm=document.getElementById('contactForm');
 if(contactForm){
   contactForm.addEventListener('submit',event=>{
