@@ -172,7 +172,30 @@
 <div id="offersList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;text-align:left">
 <p style="grid-column:1/-1;text-align:center">Chargement des offres d'emploi...</p>
 </div>
-</div></section></main>
+</div></section>
+<section id="applicationSection" style="background:#fff" hidden>
+  <div class="container" style="max-width:850px">
+    <div class="section-head">
+      <div class="section-kicker">Candidature</div>
+      <h2>Postuler à une offre</h2>
+      <p>Remplissez le formulaire ci-dessous et joignez votre CV au format PDF (4 Mo maximum).</p>
+    </div>
+    <form id="applicationForm" enctype="multipart/form-data">
+      <div class="field"><label for="appNom">Nom et prénoms *</label><input id="appNom" name="nom" type="text" maxlength="160" required autocomplete="name" placeholder="Votre nom complet"></div>
+      <div class="field"><label for="appTelephone">Téléphone *</label><input id="appTelephone" name="telephone" type="tel" maxlength="40" required autocomplete="tel" placeholder="Votre numéro de téléphone"></div>
+      <div class="field full"><label for="appEmail">Adresse e-mail (facultatif)</label><input id="appEmail" name="email" type="email" maxlength="254" autocomplete="email" placeholder="exemple@email.com"></div>
+      <div class="field full"><label for="applicationPoste">Poste concerné *</label><input id="applicationPoste" name="poste" type="text" maxlength="160" required readonly></div>
+      <div class="field full"><label for="appMessage">Message de motivation (facultatif)</label><textarea id="appMessage" name="message" maxlength="3000" placeholder="Présentez brièvement votre motivation..."></textarea></div>
+      <div class="field full"><label for="appCv">Votre CV au format PDF * (4 Mo maximum)</label><input id="appCv" name="cv" type="file" accept=".pdf,application/pdf" required><small style="color:#687386;font-size:11px">Seuls les fichiers PDF sont acceptés.</small></div>
+      <p class="form-note">Les informations et le CV transmis seront accessibles uniquement aux personnes autorisées au recrutement de POSY2SECURITY.</p>
+      <div class="field full" style="display:flex;flex-direction:row;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-gold" id="submitApplication" type="submit">Envoyer ma candidature →</button>
+        <button class="btn btn-outline" type="button" id="cancelApplication" style="border:1px solid #cbd2dc;color:#26344a;background:#fff">Annuler</button>
+      </div>
+      <p id="applicationFeedback" class="form-note full" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section></main>
 
 <footer><div class="container">
   <div class="footer-main">
@@ -225,6 +248,7 @@ async function loadPublicOffers(){
         '<p style="font-size:13px;color:#687386;margin-bottom:15px"><strong>Date limite :</strong> '+escapeOffer(deadline)+'</p>'+
         (description?'<p style="font-size:14px;color:#4d596b;margin-bottom:12px;white-space:pre-line">'+description+'</p>':'')+
         (profile?'<p style="font-size:13px;color:#4d596b;white-space:pre-line"><strong>Profil recherché :</strong><br>'+profile+'</p>':'')+
+        '<button class="btn btn-gold applyOffer" type="button" data-poste="'+title+'" style="margin-top:20px">Postuler à cette offre →</button>'+
         '</article>';
     }).join('');
   }catch(error){
@@ -235,6 +259,50 @@ function escapeOffer(value){
   return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 }
 loadPublicOffers();
+
+const applicationSection=document.getElementById('applicationSection');
+const applicationForm=document.getElementById('applicationForm');
+const applicationFeedback=document.getElementById('applicationFeedback');
+document.getElementById('offersList').addEventListener('click',event=>{
+  const button=event.target.closest('.applyOffer');
+  if(!button) return;
+  document.getElementById('applicationPoste').value=button.dataset.poste||'';
+  applicationFeedback.textContent='';
+  applicationSection.hidden=false;
+  applicationSection.scrollIntoView({behavior:'smooth',block:'start'});
+});
+document.getElementById('cancelApplication').addEventListener('click',()=>{
+  applicationSection.hidden=true;
+  applicationForm.reset();
+  applicationFeedback.textContent='';
+  document.getElementById('offres-publiees').scrollIntoView({behavior:'smooth'});
+});
+applicationForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  applicationFeedback.textContent='';
+  const cv=document.getElementById('appCv').files[0];
+  if(!cv){applicationFeedback.textContent='Veuillez joindre votre CV au format PDF.';return;}
+  if(cv.size>4*1024*1024){applicationFeedback.textContent='Votre CV dépasse la taille maximale de 4 Mo.';return;}
+  if(cv.type!=='application/pdf' && !cv.name.toLowerCase().endsWith('.pdf')){applicationFeedback.textContent='Le CV doit être un fichier PDF.';return;}
+  const submit=document.getElementById('submitApplication');
+  submit.disabled=true;
+  submit.textContent='Envoi en cours...';
+  try{
+    const response=await fetch('/api/candidatures',{method:'POST',body:new FormData(applicationForm)});
+    const result=await response.json();
+    if(!response.ok || !result.success) throw new Error(result.message||'L’envoi a échoué.');
+    applicationFeedback.textContent=result.message||'Votre candidature a bien été envoyée.';
+    applicationFeedback.style.color='#17643d';
+    applicationForm.reset();
+    document.getElementById('applicationPoste').value='';
+  }catch(error){
+    applicationFeedback.textContent=error.message||'Une erreur est survenue. Veuillez réessayer.';
+    applicationFeedback.style.color='#9b2c2c';
+  }finally{
+    submit.disabled=false;
+    submit.textContent='Envoyer ma candidature →';
+  }
+});
 const contactForm=document.getElementById('contactForm');
 if(contactForm){
   contactForm.addEventListener('submit',event=>{
