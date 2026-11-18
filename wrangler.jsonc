@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "posy2security",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-18",
+  "assets": {
+    "directory": "./",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "posy2sec",
+      "database_id": "0f981462-08f9-4949-816f-86721ab3db4c"
+    }
+  ]
+}
