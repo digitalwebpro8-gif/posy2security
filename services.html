@@ -164,14 +164,10 @@
 <p>Professionnalisme • Vigilance • Confiance</p></div></div><section class="services" id="services">
       <div class="container">
         <div class="section-head"><div class="section-kicker">Nos domaines d'intervention</div><h2>Des solutions de sécurité adaptées à chaque environnement.</h2><p>Un dispositif pertinent commence par la compréhension de vos enjeux. Nos prestations peuvent être adaptées selon le site, le niveau de risque et les consignes définies avec le client.</p></div>
-        <div class="services-grid">
-          <article class="service-card"><div class="service-icon">◈</div><h3>Gardiennage & surveillance</h3><p>Surveillance des sites, contrôle des accès, rondes et application des consignes de sécurité.</p></article>
-          <article class="service-card"><div class="service-icon">✦</div><h3>Sécurité événementielle</h3><p>Organisation de la sécurité des événements, filtrage, orientation et gestion des accès.</p></article>
-          <article class="service-card"><div class="service-icon">⌑</div><h3>Contrôle d'accès</h3><p>Accueil et vérification des entrées et sorties des personnes, visiteurs et véhicules.</p></article>
-          <article class="service-card"><div class="service-icon">◎</div><h3>Vidéosurveillance</h3><p>Conseil et accompagnement dans la mise en place de solutions de surveillance électronique.</p></article>
-          <article class="service-card"><div class="service-icon">⬡</div><h3>Protection rapprochée</h3><p>Étude des besoins de protection et accompagnement adapté aux situations particulières.</p></article>
-          <article class="service-card"><div class="service-icon">⌘</div><h3>Conseil & audit sécurité</h3><p>Évaluation des risques, recommandations et amélioration de vos dispositifs de prévention.</p></article>
+        <div class="services-grid" id="servicesGrid" aria-live="polite">
+          <p style="grid-column:1/-1;text-align:center;color:#687386;padding:30px">Chargement de nos prestations...</p>
         </div>
+        <p id="servicesMessage" style="margin-top:18px;color:#687386;font-size:13px;text-align:center" role="status"></p>
       </div>
     </section></main>
 
@@ -200,6 +196,35 @@ navLinks.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{
   menuBtn.textContent='☰';
 }));
 document.getElementById('year').textContent=new Date().getFullYear();
+
+async function loadPublicServices(){
+  const grid=document.getElementById('servicesGrid');
+  const message=document.getElementById('servicesMessage');
+  const icons=['◈','✦','⌑','◎','⬡','⌘','◇','▣','✧','◉','➤','◆'];
+  try{
+    const response=await fetch('/api/services');
+    const data=await response.json();
+    if(!response.ok||!data.success) throw new Error(data.message||'Chargement impossible.');
+    if(!data.services.length){
+      grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#687386;padding:30px">Nos prestations seront présentées prochainement.</p>';
+      return;
+    }
+    grid.innerHTML=data.services.map((service,index)=>`
+      <article class="service-card">
+        <div class="service-icon">${icons[index%icons.length]}</div>
+        <h3>${escapeServiceText(service.titre)}</h3>
+        <p>${escapeServiceText(service.description||'Une prestation adaptée à vos besoins de sécurité et de protection.')}</p>
+      </article>`).join('');
+  }catch(error){
+    grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:#687386;padding:30px">Nos services ne sont momentanément pas disponibles. Merci de réessayer plus tard.</p>';
+    message.textContent=error.message;
+  }
+}
+function escapeServiceText(value){
+  return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+loadPublicServices();
+
 const contactForm=document.getElementById('contactForm');
 if(contactForm){
   contactForm.addEventListener('submit',event=>{
