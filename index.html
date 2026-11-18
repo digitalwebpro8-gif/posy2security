@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="POSY2SECURITY — Solutions professionnelles de sécurité, surveillance et protection.">
-  <meta name="theme-color" content="#0b1730">
-  <title>POSY2SECURITY | Sécurité & Protection</title>
-  <style>
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="POSY2SECURITY — Solutions professionnelles de sécurité, surveillance et protection.">
+<meta name="theme-color" content="#0b1730"><title>POSY2SECURITY | Sécurité &amp; Protection</title>
+<style>
     :root{
       --navy:#0b1730;--navy2:#122748;--gold:#d5ad54;--gold2:#f0d58d;
       --ink:#172238;--muted:#687386;--paper:#f5f6f8;--white:#fff;
@@ -138,27 +134,25 @@
       .footer-main{align-items:flex-start;flex-direction:column}
     }
     @media(max-width:390px){.brand{font-size:13px}.brand-mark{width:40px;height:40px}.hero-actions .btn{width:100%}.approach-grid{grid-template-columns:1fr}}
-  </style>
-</head>
-<body>
-  <div class="topbar">
-    <div class="container"><span>POSY2SECURITY — Professionnalisme • Vigilance • Confiance</span><span>Solutions de sécurité et de protection</span></div>
-  </div>
-  <header>
-    <div class="container nav">
-      <a class="brand" href="#accueil" aria-label="POSY2SECURITY accueil">
-        <span class="brand-mark">P2S</span><span>POSY2SECURITY<small>SÉCURITÉ & PROTECTION</small></span>
-      </a>
-      <nav class="nav-links" id="navLinks">
-        <a href="#accueil">Accueil</a><a href="#apropos">À propos</a><a href="#services">Nos services</a>
-        <a href="#moyens">Nos moyens</a><a href="#references">Références</a><a href="#contact">Contact</a>
-      </nav>
-      <a class="nav-cta" href="#contact">Demander un devis <span>→</span></a>
-      <button class="menu-btn" id="menuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
-    </div>
-  </header>
+  
+.page-banner{background:linear-gradient(110deg,#101f3a,#19375e);color:#fff;padding:48px 0}
+.page-banner .section-kicker{color:var(--gold2)}
+.page-banner h1{font-size:clamp(30px,4vw,46px);letter-spacing:-.8px;margin:0 0 8px}
+.page-banner p{color:#d5dce8;max-width:720px;font-size:14px}
+.nav-links a[aria-current="page"]{color:var(--gold2)}
+.empty-offers{padding:70px 0;text-align:center;background:var(--paper)}
+.empty-offers h2{margin-bottom:12px}
+.empty-offers p{max-width:700px;margin:0 auto 22px;color:var(--muted)}
+@media(max-width:700px){.page-banner{padding:35px 0}}
+</style></head><body>
 
-  <main>
+<div class="topbar"><div class="container"><span>POSY2SECURITY — Professionnalisme • Vigilance • Confiance</span><span>Solutions de sécurité et de protection</span></div></div>
+<header><div class="container nav">
+<a class="brand" href="index.html" aria-label="POSY2SECURITY accueil"><span class="brand-mark">P2S</span><span>POSY2SECURITY<small>SÉCURITÉ &amp; PROTECTION</small></span></a>
+<nav class="nav-links" id="navLinks"><a href="index.html" aria-current="page">Accueil</a><a href="apropos.html">À propos</a><a href="services.html">Nos services</a><a href="moyens.html">Nos moyens</a><a href="references.html">Références</a><a href="offres-emploi.html">Offres d'emploi</a><a href="contact.html">Contact</a></nav>
+<a class="nav-cta" href="contact.html">Demander un devis <span>→</span></a>
+<button class="menu-btn" id="menuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+</div></header><main>
     <section class="hero" id="accueil">
       <div class="container"><div class="hero-content">
         <div class="eyebrow">Votre sécurité, notre engagement</div>
@@ -270,43 +264,17 @@
       </div>
     </section>
   </main>
-
-  <footer>
-    <div class="container">
-      <div class="footer-main">
-        <a class="brand" href="#accueil"><span class="brand-mark">P2S</span><span>POSY2SECURITY<small>SÉCURITÉ & PROTECTION</small></span></a>
-        <div class="footer-links"><a href="#apropos">À propos</a><a href="#services">Services</a><a href="#contact">Contact</a></div>
-        <p>Professionnalisme • Vigilance • Confiance</p>
-      </div>
-      <div class="footer-bottom"><span>© <span id="year"></span> POSY2SECURITY. Tous droits réservés.</span><span>Site vitrine — version de travail</span></div>
-    </div> <div style="text-align:center; padding:15px; font-size:12px;">
-  <a href="/admin.html" style="color:#d8a64b; text-decoration:none;">
-    Espace administrateur
-  </a>
-</div>
-  </footer>
-
-  <script>
-    const menuBtn = document.getElementById('menuBtn');
-    const navLinks = document.getElementById('navLinks');
-    menuBtn.addEventListener('click', () => {
-      const open = navLinks.classList.toggle('open');
-      menuBtn.setAttribute('aria-expanded', String(open));
-      menuBtn.textContent = open ? '×' : '☰';
-    });
-    navLinks.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
-      navLinks.classList.remove('open');
-      menuBtn.setAttribute('aria-expanded', 'false');
-      menuBtn.textContent = '☰';
-    }));
-    document.getElementById('year').textContent = new Date().getFullYear();
-    document.getElementById('contactForm').addEventListener('submit', event => {
-      event.preventDefault();
-      const data = new FormData(event.currentTarget);
-      const body = `Nom : ${data.get('name')}%0D%0ATéléphone : ${data.get('phone')}%0D%0AE-mail : ${data.get('email') || 'Non renseigné'}%0D%0AObjet : ${data.get('subject')}%0D%0A%0D%0AMessage :%0D%0A${data.get('message')}`;
-      document.getElementById('formNote').textContent = "Votre application de messagerie va s'ouvrir pour préparer le message. Ajoutez l'adresse e-mail officielle de POSY2SECURITY avant la mise en ligne.";
-      window.location.href = `mailto:?subject=${encodeURIComponent('Demande via le site POSY2SECURITY')}&body=${body}`;
-    });
-  </script>
-</body>
-</html>
+<footer><div class="container"><div class="footer-main">
+<a class="brand" href="index.html"><span class="brand-mark">P2S</span><span>POSY2SECURITY<small>SÉCURITÉ &amp; PROTECTION</small></span></a>
+<div class="footer-links"><a href="apropos.html">À propos</a><a href="services.html">Services</a><a href="offres-emploi.html">Offres d'emploi</a><a href="contact.html">Contact</a></div>
+<p>Professionnalisme • Vigilance • Confiance</p></div>
+<div class="footer-bottom"><span>© <span id="year"></span> POSY2SECURITY. Tous droits réservés.</span><span>Site vitrine</span></div></div>
+<div style="text-align:center;padding:15px;font-size:12px"><a href="/admin.html" style="color:#d8a64b;text-decoration:none">Espace administrateur</a></div></footer>
+<script>
+const menuBtn=document.getElementById('menuBtn'),navLinks=document.getElementById('navLinks');
+menuBtn.addEventListener('click',()=>{const open=navLinks.classList.toggle('open');menuBtn.setAttribute('aria-expanded',String(open));menuBtn.textContent=open?'×':'☰';});
+navLinks.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{navLinks.classList.remove('open');menuBtn.setAttribute('aria-expanded','false');menuBtn.textContent='☰';}));
+document.getElementById('year').textContent=new Date().getFullYear();
+const contactForm=document.getElementById('contactForm');
+if(contactForm){contactForm.addEventListener('submit',event=>{event.preventDefault();const data=new FormData(event.currentTarget);const body=`Nom : ${data.get('name')}%0D%0ATéléphone : ${data.get('phone')}%0D%0AE-mail : ${data.get('email')||'Non renseigné'}%0D%0AObjet : ${data.get('subject')}%0D%0A%0D%0AMessage :%0D%0A${data.get('message')}`;document.getElementById('formNote').textContent="Le formulaire sera relié à la base de données lors d'une prochaine étape. Pour le moment, votre messagerie va préparer le message.";window.location.href=`mailto:?subject=${encodeURIComponent('Demande via le site POSY2SECURITY')}&body=${body}`;});}
+</script></body></html>
