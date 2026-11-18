@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Administration | POSY2SECURITY</title>
+<style>
+:root{--navy:#101d32;--gold:#c69b35;--ink:#17243a;--muted:#64748b}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(135deg,#101d32,#1d3454);font-family:Arial,sans-serif;color:var(--ink)}
+.card{width:100%;max-width:430px;background:#fff;border-radius:16px;padding:34px;box-shadow:0 22px 60px #0005}
+.brand{font-size:13px;letter-spacing:2px;font-weight:800;color:var(--gold)}
+h1{font-size:25px;margin:12px 0 8px;color:var(--navy)}
+.intro{color:var(--muted);line-height:1.5;margin:0 0 25px}
+label{display:block;font-weight:700;font-size:14px;margin:17px 0 7px}
+input{width:100%;padding:13px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:16px}
+input:focus{outline:2px solid #c69b3555;border-color:var(--gold)}
+button{width:100%;margin-top:23px;padding:14px;border:0;border-radius:8px;background:var(--gold);color:var(--navy);font-weight:800;font-size:15px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+#message{display:none;margin-top:18px;padding:12px;border-radius:8px;line-height:1.45;font-size:14px}
+.error{display:block!important;background:#fee2e2;color:#991b1b}
+.success{display:block!important;background:#dcfce7;color:#166534}
+.session{display:none;margin-top:22px;padding:16px;background:#f1f5f9;border-radius:10px}
+.session p{line-height:1.5;color:var(--muted)}
+.small{font-size:12px;color:var(--muted);text-align:center;margin:22px 0 0}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">POSY2SECURITY</div>
+  <h1>Espace administration</h1>
+  <p class="intro">Connectez-vous avec vos identifiants administrateur pour accéder à votre espace sécurisé.</p>
+
+  <form id="loginForm">
+    <label for="email">Adresse e-mail</label>
+    <input id="email" type="email" autocomplete="username" required maxlength="254" placeholder="Votre adresse e-mail">
+    <label for="password">Mot de passe</label>
+    <input id="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Votre mot de passe">
+    <button id="loginButton" type="submit">Se connecter</button>
+  </form>
+
+  <div id="message" role="status" aria-live="polite"></div>
+  <section class="session" id="sessionBox">
+    <strong id="adminName"></strong>
+    <p id="adminDetails"></p>
+    <button id="logoutButton" type="button">Se déconnecter</button>
+  </section>
+  <p class="small">Accès réservé aux administrateurs autorisés.</p>
+</main>
+
+<script>
+const form = document.getElementById("loginForm");
+const button = document.getElementById("loginButton");
+const message = document.getElementById("message");
+const sessionBox = document.getElementById("sessionBox");
+
+function showMessage(text, type) {
+  message.textContent = text;
+  message.className = type;
+}
+function showAdmin(admin) {
+  form.style.display = "none";
+  message.style.display = "none";
+  sessionBox.style.display = "block";
+  document.getElementById("adminName").textContent = "Bienvenue, " + admin.nom;
+  document.getElementById("adminDetails").textContent =
+    "Compte : " + admin.email + " · Rôle : " + admin.role +
+    ". Le tableau de bord sera ajouté à cette page lors de la prochaine étape.";
+}
+async function checkSession() {
+  try {
+    const response = await fetch("/api/admin/me", {credentials:"same-origin"});
+    const result = await response.json();
+    if (response.ok && result.success) showAdmin(result.administrateur);
+  } catch (_) {}
+}
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  message.className = "";
+  message.style.display = "none";
+  button.disabled = true;
+  button.textContent = "Connexion en cours...";
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  try {
+    const response = await fetch("/api/admin/login", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      credentials:"same-origin",
+      body:JSON.stringify({email,password})
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      showMessage(result.message || "Connexion impossible.", "error");
+    } else {
+      document.getElementById("password").value = "";
+      showMessage("Connexion réussie.", "success");
+      showAdmin(result.administrateur);
+    }
+  } catch (_) {
+    showMessage("Impossible de contacter le serveur. Réessayez.", "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Se connecter";
+  }
+});
+document.getElementById("logoutButton").addEventListener("click", async () => {
+  try {
+    await fetch("/api/admin/logout", {
+      method:"POST",
+      credentials:"same-origin"
+    });
+  } finally {
+    sessionBox.style.display = "none";
+    form.style.display = "block";
+    form.reset();
+    showMessage("Vous êtes déconnecté.", "success");
+  }
+});
+checkSession();
+</script>
+</body>
+</html>
