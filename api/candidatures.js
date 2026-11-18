@@ -1,6 +1,30 @@
 import { head, get, del } from "@vercel/blob";
 import { getDb } from "./_lib/auth.js";
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+async function readJsonBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string") return JSON.parse(req.body);
+
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > 32 * 1024) {
+      throw new Error("Données de candidature trop volumineuses.");
+    }
+    chunks.push(Buffer.from(chunk));
+  }
+  const raw = Buffer.concat(chunks).toString("utf8");
+  if (!raw) return {};
+  return JSON.parse(raw);
+}
+
 const MAX_CV_SIZE = 10 * 1024 * 1024;
 const CV_PATH_PATTERN = /^candidatures\/[0-9a-f-]{36}\.pdf$/i;
 
@@ -40,12 +64,13 @@ export default async function handler(req, res) {
   let uploadedPath = null;
 
   try {
-    const nom = clean(req.body?.nom, 160);
-    const email = clean(req.body?.email, 254).toLowerCase();
-    const telephone = clean(req.body?.telephone, 40);
-    const poste = clean(req.body?.poste, 160);
-    const message = clean(req.body?.message, 3000);
-    const cvPath = clean(req.body?.cvPath, 220);
+    const body = await readJsonBody(req);
+    const nom = clean(body.nom, 160);
+    const email = clean(body.email, 254).toLowerCase();
+    const telephone = clean(body.telephone, 40);
+    const poste = clean(body.poste, 160);
+    const message = clean(body.message, 3000);
+    const cvPath = clean(body.cvPath, 220);
 
     if (!nom || !telephone || !poste) {
       return res.status(400).json({
