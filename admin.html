@@ -322,6 +322,28 @@
       margin-top: 15px;
     }
 
+    .service-admin { background:#fff; padding:22px; border:1px solid var(--border); border-radius:11px; }
+    .service-admin h3 { margin:0 0 8px; color:var(--navy); }
+    .service-admin p { color:var(--muted); font-size:13px; }
+    .service-form { display:grid; gap:12px; margin:18px 0 25px; }
+    .service-form input,.service-form textarea { width:100%; padding:12px; border:1px solid var(--border); border-radius:7px; font:inherit; }
+    .service-form textarea { min-height:95px; resize:vertical; }
+    .service-form label { font-size:12px; font-weight:bold; }
+    .service-form button,.service-actions button { border:0; border-radius:7px; padding:10px 14px; cursor:pointer; font-weight:bold; }
+    .service-save { background:var(--gold); color:var(--navy); }
+    .service-cancel { background:#edf0f5; color:var(--text); margin-left:7px; }
+    .service-list { display:grid; gap:12px; }
+    .service-row { display:flex; justify-content:space-between; align-items:center; gap:15px; padding:15px; border:1px solid var(--border); border-radius:8px; }
+    .service-row h4 { margin:0 0 5px; color:var(--navy); }
+    .service-row p { margin:0; }
+    .service-state { display:inline-block; margin-top:7px; font-size:11px; font-weight:bold; }
+    .service-state.on { color:var(--green); }
+    .service-state.off { color:var(--red); }
+    .service-actions { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+    .service-edit { background:#edf0f5; color:var(--navy); }
+    .service-toggle { background:#fff1e2; color:#8b5c12; }
+    #serviceAdminMessage { margin:12px 0; font-size:13px; }
+
     footer {
       padding: 20px 30px;
       color: var(--muted);
@@ -511,6 +533,34 @@
           </div>
         </div>
 
+        <div id="servicesSection" class="hidden">
+          <div class="service-admin">
+            <h3>Gestion des prestations</h3>
+            <p>Ajoutez, modifiez ou masquez les services présentés sur le site public.</p>
+            <form id="serviceForm" class="service-form">
+              <input type="hidden" id="serviceId">
+              <div>
+                <label for="serviceTitle">Intitulé du service *</label>
+                <input id="serviceTitle" maxlength="160" required placeholder="Ex. Sécurité événementielle">
+              </div>
+              <div>
+                <label for="serviceDescription">Description</label>
+                <textarea id="serviceDescription" maxlength="3000" placeholder="Présentez brièvement cette prestation..."></textarea>
+              </div>
+              <div>
+                <label><input type="checkbox" id="serviceActive" checked style="width:auto"> Afficher ce service sur le site public</label>
+              </div>
+              <div>
+                <button class="service-save" id="serviceSubmit" type="submit">Ajouter le service</button>
+                <button class="service-cancel hidden" id="serviceCancel" type="button">Annuler la modification</button>
+              </div>
+            </form>
+            <div id="serviceAdminMessage" role="status"></div>
+            <h3>Liste des services</h3>
+            <div id="serviceList" class="service-list"><p>Chargement des services...</p></div>
+          </div>
+        </div>
+
         <div id="dashboardMessage" class="loading-text" role="status"></div>
       </div>
 
@@ -633,13 +683,123 @@
         document.getElementById("pageTitle").textContent = section;
 
         const isHome = section === "Accueil";
+        const isServices = section === "Services";
         document.getElementById("homeSection").classList.toggle("hidden", !isHome);
-        document.getElementById("otherSection").classList.toggle("hidden", isHome);
+        document.getElementById("otherSection").classList.toggle("hidden", isHome || isServices);
+        document.getElementById("servicesSection").classList.toggle("hidden", !isServices);
 
-        if (!isHome) {
+        if (!isHome && !isServices) {
           document.getElementById("otherTitle").textContent = section;
         }
+        if (isServices) loadAdminServices();
       });
+    });
+
+    const serviceForm = document.getElementById("serviceForm");
+    const serviceList = document.getElementById("serviceList");
+    const serviceMessage = document.getElementById("serviceAdminMessage");
+
+    function showServiceMessage(message, isError = false) {
+      serviceMessage.textContent = message;
+      serviceMessage.style.color = isError ? "var(--red)" : "var(--green)";
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, char => ({
+        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+      }[char]));
+    }
+
+    async function loadAdminServices() {
+      serviceList.innerHTML = "<p>Chargement des services...</p>";
+      try {
+        const response = await fetch("/api/admin/services", { credentials:"same-origin" });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Impossible de charger les services.");
+        if (!data.services.length) {
+          serviceList.innerHTML = "<p>Aucun service enregistré. Utilisez le formulaire ci-dessus pour ajouter une prestation.</p>";
+          return;
+        }
+        serviceList.innerHTML = data.services.map(service => `
+          <article class="service-row">
+            <div>
+              <h4>${escapeHtml(service.titre)}</h4>
+              <p>${escapeHtml(service.description || "Aucune description renseignée.")}</p>
+              <span class="service-state ${service.actif ? "on" : "off"}">${service.actif ? "Visible sur le site" : "Masqué du site"}</span>
+            </div>
+            <div class="service-actions">
+              <button class="service-edit" type="button" data-edit="${service.id}">Modifier</button>
+              <button class="service-toggle" type="button" data-toggle="${service.id}" data-active="${service.actif}">${service.actif ? "Masquer" : "Publier"}</button>
+            </div>
+          </article>`).join("");
+        serviceList.querySelectorAll("[data-edit]").forEach(button => {
+          button.addEventListener("click", () => {
+            const item = data.services.find(service => String(service.id) === button.dataset.edit);
+            if (!item) return;
+            document.getElementById("serviceId").value = item.id;
+            document.getElementById("serviceTitle").value = item.titre;
+            document.getElementById("serviceDescription").value = item.description || "";
+            document.getElementById("serviceActive").checked = item.actif;
+            document.getElementById("serviceSubmit").textContent = "Enregistrer les modifications";
+            document.getElementById("serviceCancel").classList.remove("hidden");
+            document.getElementById("serviceTitle").focus();
+          });
+        });
+        serviceList.querySelectorAll("[data-toggle]").forEach(button => {
+          button.addEventListener("click", async () => {
+            const item = data.services.find(service => String(service.id) === button.dataset.toggle);
+            if (!item) return;
+            await saveService({ id:item.id, titre:item.titre, description:item.description || "", actif:!item.actif }, true);
+          });
+        });
+      } catch (error) {
+        serviceList.innerHTML = "<p>Erreur lors du chargement des prestations.</p>";
+        showServiceMessage(error.message, true);
+      }
+    }
+
+    async function saveService(payload, silent = false) {
+      try {
+        const response = await fetch("/api/admin/services", {
+          method: payload.id ? "PUT" : "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Enregistrement impossible.");
+        if (!silent) {
+          serviceForm.reset();
+          document.getElementById("serviceId").value = "";
+          document.getElementById("serviceActive").checked = true;
+          document.getElementById("serviceSubmit").textContent = "Ajouter le service";
+          document.getElementById("serviceCancel").classList.add("hidden");
+        }
+        showServiceMessage(data.message || "Opération effectuée.");
+        await loadAdminServices();
+      } catch (error) {
+        showServiceMessage(error.message, true);
+      }
+    }
+
+    serviceForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const id = document.getElementById("serviceId").value;
+      saveService({
+        ...(id ? { id:Number(id) } : {}),
+        titre:document.getElementById("serviceTitle").value.trim(),
+        description:document.getElementById("serviceDescription").value.trim(),
+        actif:document.getElementById("serviceActive").checked
+      });
+    });
+
+    document.getElementById("serviceCancel").addEventListener("click", () => {
+      serviceForm.reset();
+      document.getElementById("serviceId").value = "";
+      document.getElementById("serviceActive").checked = true;
+      document.getElementById("serviceSubmit").textContent = "Ajouter le service";
+      document.getElementById("serviceCancel").classList.add("hidden");
+      showServiceMessage("");
     });
 
     async function checkExistingSession() {
