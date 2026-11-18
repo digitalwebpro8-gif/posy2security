@@ -1,89 +1,31 @@
-import Busboy from "busboy";
-import crypto from "node:crypto";
-import { put, del } from "@vercel/blob";
+import { head, get, del } from "@vercel/blob";
 import { getDb } from "./_lib/auth.js";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-const MAX_CV_SIZE = 4 * 1024 * 1024;
-
-function readMultipart(req) {
-  return new Promise((resolve, reject) => {
-    let parser;
-
-    try {
-      parser = Busboy({
-        headers: req.headers,
-        limits: {
-          files: 1,
-          fields: 5,
-          fileSize: MAX_CV_SIZE,
-          fieldSize: 5000,
-        },
-      });
-    } catch {
-      reject(new Error("Formulaire multipart invalide."));
-      return;
-    }
-
-    const fields = {};
-    let fileBuffer = null;
-    let fileMime = "";
-    let fileName = "";
-    let fileTooLarge = false;
-    let fileCount = 0;
-    let parserError = null;
-
-    parser.on("field", (name, value) => {
-      fields[name] = value;
-    });
-
-    parser.on("file", (name, stream, info) => {
-      fileCount += 1;
-      if (name !== "cv") {
-        stream.resume();
-        return;
-      }
-
-      fileMime = info.mimeType || "";
-      fileName = info.filename || "";
-      const chunks = [];
-
-      stream.on("limit", () => {
-        fileTooLarge = true;
-      });
-
-      stream.on("data", (chunk) => chunks.push(chunk));
-      stream.on("end", () => {
-        fileBuffer = Buffer.concat(chunks);
-      });
-    });
-
-    parser.on("filesLimit", () => {
-      parserError = new Error("Un seul CV peut être envoyé.");
-    });
-    parser.on("fieldsLimit", () => {
-      parserError = new Error("Trop de champs dans le formulaire.");
-    });
-    parser.on("error", () => {
-      parserError = new Error("Impossible de lire le formulaire.");
-    });
-    parser.on("finish", () => {
-      if (parserError) return reject(parserError);
-      if (fileTooLarge) return reject(new Error("Le CV ne doit pas dépasser 4 Mo."));
-      resolve({ fields, fileBuffer, fileMime, fileName, fileCount });
-    });
-
-    req.pipe(parser);
-  });
-}
+const MAX_CV_SIZE = 10 * 1024 * 1024;
+const CV_PATH_PATTERN = /^candidatures\/[0-9a-f-]{36}\.pdf$/i;
 
 function clean(value, maxLength) {
   return String(value || "").trim().slice(0, maxLength);
+}
+
+async function hasPdfSignature(pathname) {
+  const result = await get(pathname, { access: "private" });
+  if (!result || result.statusCode !== 200) return false;
+
+  const reader = result.stream.getReader();
+  let prefix = Buffer.alloc(0);
+
+  try {
+    while (prefix.length < 5) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      prefix = Buffer.concat([prefix, Buffer.from(value)]);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+
+  return prefix.subarray(0, 5).toString("ascii") === "%PDF-";
 }
 
 export default async function handler(req, res) {
@@ -98,13 +40,12 @@ export default async function handler(req, res) {
   let uploadedPath = null;
 
   try {
-    const { fields, fileBuffer, fileMime, fileCount } = await readMultipart(req);
-
-    const nom = clean(fields.nom, 160);
-    const email = clean(fields.email, 254).toLowerCase();
-    const telephone = clean(fields.telephone, 40);
-    const poste = clean(fields.poste, 160);
-    const message = clean(fields.message, 3000);
+    const nom = clean(req.body?.nom, 160);
+    const email = clean(req.body?.email, 254).toLowerCase();
+    const telephone = clean(req.body?.telephone, 40);
+    const poste = clean(req.body?.poste, 160);
+    const message = clean(req.body?.message, 3000);
+    const cvPath = clean(req.body?.cvPath, 220);
 
     if (!nom || !telephone || !poste) {
       return res.status(400).json({
@@ -120,27 +61,33 @@ export default async function handler(req, res) {
       });
     }
 
-    if (fileCount !== 1 || !fileBuffer || fileBuffer.length === 0) {
+    if (!CV_PATH_PATTERN.test(cvPath)) {
       return res.status(400).json({
         success: false,
         message: "Veuillez joindre votre CV au format PDF.",
       });
     }
 
-    if (fileMime !== "application/pdf" || fileBuffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
+    uploadedPath = cvPath;
+    const metadata = await head(cvPath);
+
+    if (metadata.size > MAX_CV_SIZE) {
+      await del(cvPath);
+      uploadedPath = null;
+      return res.status(400).json({
+        success: false,
+        message: "Le CV ne doit pas dépasser 10 Mo.",
+      });
+    }
+
+    if (metadata.contentType !== "application/pdf" || !(await hasPdfSignature(cvPath))) {
+      await del(cvPath);
+      uploadedPath = null;
       return res.status(400).json({
         success: false,
         message: "Le fichier fourni n'est pas un véritable document PDF.",
       });
     }
-
-    const pathname = `candidatures/${crypto.randomUUID()}.pdf`;
-    const blob = await put(pathname, fileBuffer, {
-      access: "private",
-      contentType: "application/pdf",
-      addRandomSuffix: false,
-    });
-    uploadedPath = blob.pathname;
 
     const sql = getDb();
     const inserted = await sql`
@@ -148,9 +95,11 @@ export default async function handler(req, res) {
         (nom, email, telephone, poste, message, cv_url, statut, date_creation)
       VALUES
         (${nom}, ${email || null}, ${telephone}, ${poste}, ${message || null},
-         ${uploadedPath}, 'nouveau', NOW())
+         ${cvPath}, 'nouveau', NOW())
       RETURNING id
     `;
+
+    uploadedPath = null;
 
     return res.status(201).json({
       success: true,
@@ -164,17 +113,6 @@ export default async function handler(req, res) {
       } catch (cleanupError) {
         console.error("Nettoyage du CV impossible:", cleanupError);
       }
-    }
-
-    const message = error instanceof Error ? error.message : "";
-    if (
-      message.includes("Le CV ne doit pas dépasser") ||
-      message.includes("Formulaire multipart") ||
-      message.includes("Un seul CV") ||
-      message.includes("Trop de champs") ||
-      message.includes("Impossible de lire")
-    ) {
-      return res.status(400).json({ success: false, message });
     }
 
     console.error("Erreur dépôt candidature:", error);
