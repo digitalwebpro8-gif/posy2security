@@ -1,124 +1,669 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<title>Administration | POSY2SECURITY</title>
-<style>
-:root{--navy:#101d32;--gold:#c69b35;--ink:#17243a;--muted:#64748b}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(135deg,#101d32,#1d3454);font-family:Arial,sans-serif;color:var(--ink)}
-.card{width:100%;max-width:430px;background:#fff;border-radius:16px;padding:34px;box-shadow:0 22px 60px #0005}
-.brand{font-size:13px;letter-spacing:2px;font-weight:800;color:var(--gold)}
-h1{font-size:25px;margin:12px 0 8px;color:var(--navy)}
-.intro{color:var(--muted);line-height:1.5;margin:0 0 25px}
-label{display:block;font-weight:700;font-size:14px;margin:17px 0 7px}
-input{width:100%;padding:13px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:16px}
-input:focus{outline:2px solid #c69b3555;border-color:var(--gold)}
-button{width:100%;margin-top:23px;padding:14px;border:0;border-radius:8px;background:var(--gold);color:var(--navy);font-weight:800;font-size:15px;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}
-#message{display:none;margin-top:18px;padding:12px;border-radius:8px;line-height:1.45;font-size:14px}
-.error{display:block!important;background:#fee2e2;color:#991b1b}
-.success{display:block!important;background:#dcfce7;color:#166534}
-.session{display:none;margin-top:22px;padding:16px;background:#f1f5f9;border-radius:10px}
-.session p{line-height:1.5;color:var(--muted)}
-.small{font-size:12px;color:var(--muted);text-align:center;margin:22px 0 0}
-</style>
-</head>
-<body>
-<main class="card">
-  <div class="brand">POSY2SECURITY</div>
-  <h1>Espace administration</h1>
-  <p class="intro">Connectez-vous avec vos identifiants administrateur pour accéder à votre espace sécurisé.</p>
-
-  <form id="loginForm">
-    <label for="email">Adresse e-mail</label>
-    <input id="email" type="email" autocomplete="username" required maxlength="254" placeholder="Votre adresse e-mail">
-    <label for="password">Mot de passe</label>
-    <input id="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Votre mot de passe">
-    <button id="loginButton" type="submit">Se connecter</button>
-  </form>
-
-  <div id="message" role="status" aria-live="polite"></div>
-  <section class="session" id="sessionBox">
-    <strong id="adminName"></strong>
-    <p id="adminDetails"></p>
-    <button id="logoutButton" type="button">Se déconnecter</button>
-  </section>
-  <p class="small">Accès réservé aux administrateurs autorisés.</p>
-</main>
-
-<script>
-const form = document.getElementById("loginForm");
-const button = document.getElementById("loginButton");
-const message = document.getElementById("message");
-const sessionBox = document.getElementById("sessionBox");
-
-function showMessage(text, type) {
-  message.textContent = text;
-  message.className = type;
-}
-function showAdmin(admin) {
-  form.style.display = "none";
-  message.style.display = "none";
-  sessionBox.style.display = "block";
-  document.getElementById("adminName").textContent = "Bienvenue, " + admin.nom;
-  document.getElementById("adminDetails").textContent =
-    "Compte : " + admin.email + " · Rôle : " + admin.role +
-    ". Le tableau de bord sera ajouté à cette page lors de la prochaine étape.";
-}
-async function checkSession() {
-  try {
-    const response = await fetch("/api/admin/me", {credentials:"same-origin"});
-    const result = await response.json();
-    if (response.ok && result.success) showAdmin(result.administrateur);
-  } catch (_) {}
-}
-form.addEventListener("submit", async event => {
-  event.preventDefault();
-  message.className = "";
-  message.style.display = "none";
-  button.disabled = true;
-  button.textContent = "Connexion en cours...";
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  try {
-    const response = await fetch("/api/admin/login", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      credentials:"same-origin",
-      body:JSON.stringify({email,password})
-    });
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-      showMessage(result.message || "Connexion impossible.", "error");
-    } else {
-      document.getElementById("password").value = "";
-      showMessage("Connexion réussie.", "success");
-      showAdmin(result.administrateur);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administration | POSY2SECURITY</title>
+  <style>
+    :root {
+      --navy: #101d35;
+      --navy2: #192b49;
+      --gold: #d8a64b;
+      --bg: #f3f5f9;
+      --white: #fff;
+      --text: #263449;
+      --muted: #778399;
+      --border: #e5e9f0;
+      --green: #18865b;
+      --red: #c74747;
     }
-  } catch (_) {
-    showMessage("Impossible de contacter le serveur. Réessayez.", "error");
-  } finally {
-    button.disabled = false;
-    button.textContent = "Se connecter";
-  }
-});
-document.getElementById("logoutButton").addEventListener("click", async () => {
-  try {
-    await fetch("/api/admin/logout", {
-      method:"POST",
-      credentials:"same-origin"
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button, input { font: inherit; }
+
+    .hidden { display: none !important; }
+
+    /* CONNEXION */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #101d35, #243b60);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      padding: 38px;
+      border-radius: 16px;
+      box-shadow: 0 15px 45px #0003;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      width: 58px;
+      height: 58px;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy);
+      color: var(--gold);
+      font-size: 25px;
+      font-weight: bold;
+      border-radius: 14px;
+      margin-bottom: 12px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 23px;
+    }
+
+    .brand p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field { margin-bottom: 18px; }
+
+    .field label {
+      display: block;
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: var(--gold);
+    }
+
+    .primary-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .primary-btn:disabled { opacity: .6; cursor: wait; }
+
+    .message {
+      margin-top: 15px;
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .error { color: var(--red); }
+    .success { color: var(--green); }
+
+    /* TABLEAU DE BORD */
+    #dashboardScreen { min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 245px;
+      padding: 25px 16px;
+      background: var(--navy);
+      color: white;
+      overflow-y: auto;
+    }
+
+    .sidebar-brand {
+      padding: 5px 12px 25px;
+      border-bottom: 1px solid #ffffff20;
+      margin-bottom: 22px;
+    }
+
+    .sidebar-brand strong {
+      display: block;
+      color: var(--gold);
+      font-size: 19px;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-brand span {
+      font-size: 11px;
+      color: #c1cada;
+    }
+
+    .nav-title {
+      padding: 8px 12px;
+      color: #8f9bb0;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .nav-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      color: #e0e6f0;
+      background: transparent;
+      padding: 12px;
+      margin: 3px 0;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      background: var(--navy2);
+      color: var(--gold);
+    }
+
+    .main {
+      margin-left: 245px;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: white;
+      padding: 18px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 20px;
+      color: var(--navy);
+    }
+
+    .admin-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .avatar {
+      width: 37px;
+      height: 37px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy);
+      color: var(--gold);
+      border-radius: 50%;
+      font-weight: bold;
+    }
+
+    .logout-btn {
+      background: #fff1f1;
+      border: 0;
+      color: var(--red);
+      padding: 10px 13px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .content { padding: 30px; }
+
+    .welcome {
+      background: linear-gradient(120deg, #192b49, #304c73);
+      color: white;
+      padding: 26px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+    }
+
+    .welcome h3 {
+      margin: 0 0 8px;
+      font-size: 21px;
+    }
+
+    .welcome p {
+      margin: 0;
+      color: #d5deeb;
+      font-size: 13px;
+    }
+
+    .section-heading {
+      font-size: 16px;
+      color: var(--navy);
+      margin: 28px 0 15px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 20px;
+      min-height: 125px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 13px;
+    }
+
+    .stat-number {
+      font-size: 29px;
+      font-weight: bold;
+      color: var(--navy);
+    }
+
+    .stat-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .panel {
+      background: white;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      margin-top: 22px;
+    }
+
+    .panel h3 {
+      color: var(--navy);
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .panel p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .loading-text {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 15px;
+    }
+
+    footer {
+      padding: 20px 30px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 1050px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 700px) {
+      .sidebar {
+        position: relative;
+        width: 100%;
+        bottom: auto;
+        padding: 15px;
+      }
+
+      .sidebar-brand { padding-bottom: 12px; margin-bottom: 10px; }
+
+      .nav-title { display: none; }
+
+      .nav-link {
+        display: inline-block;
+        width: auto;
+        padding: 9px;
+        font-size: 11px;
+      }
+
+      .main { margin-left: 0; }
+
+      .topbar {
+        padding: 15px;
+        flex-wrap: wrap;
+      }
+
+      .content { padding: 16px; }
+
+      .stats-grid { gap: 10px; }
+
+      .stat-card { padding: 15px; }
+
+      .stat-number { font-size: 24px; }
+
+      .admin-info { flex-wrap: wrap; }
+    }
+
+    @media (max-width: 380px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- CONNEXION ADMINISTRATEUR -->
+  <section id="loginScreen">
+    <div class="login-card">
+      <div class="brand">
+        <div class="brand-mark">P2</div>
+        <h1>POSY2SECURITY</h1>
+        <p>Espace sécurisé d'administration</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">Adresse e-mail</label>
+          <input type="email" id="email" required
+                 placeholder="Votre adresse e-mail" autocomplete="username">
+        </div>
+
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input type="password" id="password" required
+                 placeholder="Votre mot de passe" autocomplete="current-password">
+        </div>
+
+        <button class="primary-btn" id="loginButton" type="submit">
+          Se connecter
+        </button>
+
+        <div id="loginMessage" class="message" role="status"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ESPACE ADMINISTRATEUR -->
+  <section id="dashboardScreen" class="hidden">
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <strong>POSY2SECURITY</strong>
+        <span>Administration du site</span>
+      </div>
+
+      <div class="nav-title">MENU PRINCIPAL</div>
+      <button class="nav-link active" data-section="Accueil">⌂ Accueil</button>
+      <button class="nav-link" data-section="Contacts">✉ Contacts</button>
+      <button class="nav-link" data-section="Devis">▤ Demandes de devis</button>
+      <button class="nav-link" data-section="Candidatures">♙ Candidatures et CV</button>
+      <button class="nav-link" data-section="Offres d'emploi">▣ Offres d'emploi</button>
+      <button class="nav-link" data-section="Actualités">▤ Actualités</button>
+      <button class="nav-link" data-section="Services">⚙ Services</button>
+
+      <div class="nav-title">ADMINISTRATION</div>
+      <button class="nav-link" data-section="Administrateurs">♧ Administrateurs</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h2 id="pageTitle">Tableau de bord</h2>
+
+        <div class="admin-info">
+          <div class="avatar" id="adminAvatar">A</div>
+          <span id="adminName">Administrateur</span>
+          <button class="logout-btn" id="logoutButton">Déconnexion</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <div id="homeSection">
+          <div class="welcome">
+            <h3 id="welcomeName">Bienvenue dans votre espace</h3>
+            <p>Gérez les activités et les informations de POSY2SECURITY.</p>
+          </div>
+
+          <h3 class="section-heading">Vue générale de votre activité</h3>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Messages reçus</div>
+              <div class="stat-number" id="statContacts">—</div>
+              <div class="stat-note">Contacts du site</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Demandes de devis</div>
+              <div class="stat-number" id="statDevis">—</div>
+              <div class="stat-note">Demandes enregistrées</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Candidatures</div>
+              <div class="stat-number" id="statCandidatures">—</div>
+              <div class="stat-note">Dossiers reçus</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Offres d'emploi</div>
+              <div class="stat-number" id="statOffres">—</div>
+              <div class="stat-note">Offres enregistrées</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Actualités</div>
+              <div class="stat-number" id="statActualites">—</div>
+              <div class="stat-note">Articles enregistrés</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Services actifs</div>
+              <div class="stat-number" id="statServices">—</div>
+              <div class="stat-note">Services proposés</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Administrateurs actifs</div>
+              <div class="stat-number" id="statAdmins">—</div>
+              <div class="stat-note">Comptes administrateurs</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>État de la connexion</h3>
+            <p id="connectionStatus">Chargement des données...</p>
+          </div>
+        </div>
+
+        <div id="otherSection" class="hidden">
+          <div class="panel">
+            <h3 id="otherTitle"></h3>
+            <p>
+              Ce module est prévu dans votre espace d'administration.
+              Son système de gestion sera raccordé à la base de données
+              lors des prochaines étapes.
+            </p>
+          </div>
+        </div>
+
+        <div id="dashboardMessage" class="loading-text" role="status"></div>
+      </div>
+
+      <footer>
+        POSY2SECURITY — Espace d'administration sécurisé
+      </footer>
+    </main>
+  </section>
+
+  <script>
+    const loginScreen = document.getElementById("loginScreen");
+    const dashboardScreen = document.getElementById("dashboardScreen");
+    const loginForm = document.getElementById("loginForm");
+    const loginButton = document.getElementById("loginButton");
+    const loginMessage = document.getElementById("loginMessage");
+
+    function showLogin(message = "") {
+      dashboardScreen.classList.add("hidden");
+      loginScreen.classList.remove("hidden");
+      loginMessage.textContent = message;
+      loginMessage.className = "message error";
+    }
+
+    function showDashboard(admin) {
+      loginScreen.classList.add("hidden");
+      dashboardScreen.classList.remove("hidden");
+
+      const name = admin.nom || "Administrateur";
+      document.getElementById("adminName").textContent = name;
+      document.getElementById("welcomeName").textContent = "Bienvenue, " + name;
+      document.getElementById("adminAvatar").textContent =
+        name.trim().charAt(0).toUpperCase();
+    }
+
+    async function loadDashboard() {
+      const response = await fetch("/api/admin/dashboard", {
+        method: "GET",
+        credentials: "same-origin"
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Impossible de charger le tableau de bord.");
+      }
+
+      showDashboard(data.administrateur);
+
+      const stats = data.statistiques;
+
+      document.getElementById("statContacts").textContent = stats.contacts;
+      document.getElementById("statDevis").textContent = stats.devis;
+      document.getElementById("statCandidatures").textContent = stats.candidatures;
+      document.getElementById("statOffres").textContent = stats.offresEmploi;
+      document.getElementById("statActualites").textContent = stats.actualites;
+      document.getElementById("statServices").textContent = stats.servicesActifs;
+      document.getElementById("statAdmins").textContent = stats.administrateurs;
+
+      document.getElementById("connectionStatus").textContent =
+        "Connexion sécurisée à la base de données réussie. Statistiques actualisées.";
+    }
+
+    loginForm.addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      loginButton.disabled = true;
+      loginButton.textContent = "Connexion en cours...";
+      loginMessage.textContent = "";
+
+      try {
+        const response = await fetch("/api/admin/login", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Échec de la connexion.");
+        }
+
+        await loadDashboard();
+
+      } catch (error) {
+        showLogin(error.message);
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Se connecter";
+      }
     });
-  } finally {
-    sessionBox.style.display = "none";
-    form.style.display = "block";
-    form.reset();
-    showMessage("Vous êtes déconnecté.", "success");
-  }
-});
-checkSession();
-</script>
+
+    document.getElementById("logoutButton").addEventListener("click", async function() {
+      try {
+        await fetch("/api/admin/logout", {
+          method: "POST",
+          credentials: "same-origin"
+        });
+      } catch (error) {
+        console.error("Erreur de déconnexion :", error);
+      }
+
+      loginForm.reset();
+      showLogin("Vous êtes déconnecté.");
+    });
+
+    document.querySelectorAll(".nav-link").forEach(function(button) {
+      button.addEventListener("click", function() {
+        document.querySelectorAll(".nav-link").forEach(function(item) {
+          item.classList.remove("active");
+        });
+
+        button.classList.add("active");
+
+        const section = button.dataset.section;
+        document.getElementById("pageTitle").textContent = section;
+
+        const isHome = section === "Accueil";
+        document.getElementById("homeSection").classList.toggle("hidden", !isHome);
+        document.getElementById("otherSection").classList.toggle("hidden", isHome);
+
+        if (!isHome) {
+          document.getElementById("otherTitle").textContent = section;
+        }
+      });
+    });
+
+    async function checkExistingSession() {
+      try {
+        const response = await fetch("/api/admin/me", {
+          method: "GET",
+          credentials: "same-origin"
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          showLogin();
+          return;
+        }
+
+        await loadDashboard();
+
+      } catch (error) {
+        showLogin("Impossible de vérifier votre session. Veuillez vous reconnecter.");
+      }
+    }
+
+    checkExistingSession();
+  </script>
 </body>
 </html>
