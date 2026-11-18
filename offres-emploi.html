@@ -178,7 +178,7 @@
     <div class="section-head">
       <div class="section-kicker">Candidature</div>
       <h2>Postuler à une offre</h2>
-      <p>Remplissez le formulaire ci-dessous et joignez votre CV au format PDF (4 Mo maximum).</p>
+      <p>Remplissez le formulaire ci-dessous et joignez votre CV au format PDF (10 Mo maximum).</p>
     </div>
     <form id="applicationForm" enctype="multipart/form-data">
       <div class="field"><label for="appNom">Nom et prénoms *</label><input id="appNom" name="nom" type="text" maxlength="160" required autocomplete="name" placeholder="Votre nom complet"></div>
@@ -186,7 +186,7 @@
       <div class="field full"><label for="appEmail">Adresse e-mail (facultatif)</label><input id="appEmail" name="email" type="email" maxlength="254" autocomplete="email" placeholder="exemple@email.com"></div>
       <div class="field full"><label for="applicationPoste">Poste concerné *</label><input id="applicationPoste" name="poste" type="text" maxlength="160" required readonly></div>
       <div class="field full"><label for="appMessage">Message de motivation (facultatif)</label><textarea id="appMessage" name="message" maxlength="3000" placeholder="Présentez brièvement votre motivation..."></textarea></div>
-      <div class="field full"><label for="appCv">Votre CV au format PDF * (4 Mo maximum)</label><input id="appCv" name="cv" type="file" accept=".pdf,application/pdf" required><small style="color:#687386;font-size:11px">Seuls les fichiers PDF sont acceptés.</small></div>
+      <div class="field full"><label for="appCv">Votre CV au format PDF * (10 Mo maximum)</label><input id="appCv" name="cv" type="file" accept=".pdf,application/pdf" required><small style="color:#687386;font-size:11px">Seuls les fichiers PDF sont acceptés.</small></div>
       <p class="form-note">Les informations et le CV transmis seront accessibles uniquement aux personnes autorisées au recrutement de POSY2SECURITY.</p>
       <div class="field full" style="display:flex;flex-direction:row;gap:12px;flex-wrap:wrap">
         <button class="btn btn-gold" id="submitApplication" type="submit">Envoyer ma candidature →</button>
@@ -282,13 +282,33 @@ applicationForm.addEventListener('submit',async event=>{
   applicationFeedback.textContent='';
   const cv=document.getElementById('appCv').files[0];
   if(!cv){applicationFeedback.textContent='Veuillez joindre votre CV au format PDF.';return;}
-  if(cv.size>4*1024*1024){applicationFeedback.textContent='Votre CV dépasse la taille maximale de 4 Mo.';return;}
+  if(cv.size>10*1024*1024){applicationFeedback.textContent='Votre CV dépasse la taille maximale de 10 Mo.';return;}
   if(cv.type!=='application/pdf' && !cv.name.toLowerCase().endsWith('.pdf')){applicationFeedback.textContent='Le CV doit être un fichier PDF.';return;}
   const submit=document.getElementById('submitApplication');
   submit.disabled=true;
   submit.textContent='Envoi en cours...';
   try{
-    const response=await fetch('/api/candidatures',{method:'POST',body:new FormData(applicationForm)});
+    const { upload } = await import('https://esm.sh/@vercel/blob/client@2.3.0');
+    const pathname='candidatures/'+crypto.randomUUID()+'.pdf';
+    applicationFeedback.textContent='Téléversement sécurisé du CV en cours...';
+    const blob=await upload(pathname,cv,{
+      access:'private',
+      handleUploadUrl:'/api/candidatures-upload'
+    });
+    const payload={
+      nom:document.getElementById('appNom').value,
+      telephone:document.getElementById('appTelephone').value,
+      email:document.getElementById('appEmail').value,
+      poste:document.getElementById('applicationPoste').value,
+      message:document.getElementById('appMessage').value,
+      cvPath:blob.pathname
+    };
+    applicationFeedback.textContent='Enregistrement de votre candidature...';
+    const response=await fetch('/api/candidatures',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
     const result=await response.json();
     if(!response.ok || !result.success) throw new Error(result.message||'L’envoi a échoué.');
     applicationFeedback.textContent=result.message||'Votre candidature a bien été envoyée.';
