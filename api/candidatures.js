@@ -8,7 +8,7 @@ export const config = {
 };
 
 async function readJsonBody(req) {
-  if (req.body && typeof req.body === "object") return req.body;
+  if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) return req.body;
   if (typeof req.body === "string") return JSON.parse(req.body);
 
   const chunks = [];
