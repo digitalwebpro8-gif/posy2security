@@ -144,73 +144,16 @@ export default {
         return json({
           success: true,
           message: "Connexion à la base POSY2SECURITY réussie.",
-          hasSetupKey: Boolean(env.ADMIN_SETUP_KEY),
           tables: result.results
         });
       }
 
-      // Création unique du premier administrateur principal
-      if (path === "/api/admin/setup" && request.method === "POST") {
-        if (!env.ADMIN_SETUP_KEY) {
-          return json({
-            success: false,
-            message: "Configuration de sécurité absente."
-          }, 503);
-        }
-
-        const suppliedKey = request.headers.get("X-Admin-Setup-Key") || "";
-        const expectedHash = await sha256(env.ADMIN_SETUP_KEY);
-        const suppliedHash = await sha256(suppliedKey);
-
-        if (expectedHash !== suppliedHash) {
-          return json({
-            success: false,
-            message: "Accès refusé."
-          }, 403);
-        }
-
-        const count = await env.DB.prepare(
-          "SELECT COUNT(*) AS total FROM administrateurs"
-        ).first();
-
-        if (Number(count.total) > 0) {
-          return json({
-            success: false,
-            message: "Le compte administrateur existe déjà."
-          }, 409);
-        }
-
-        const body = await request.json();
-        const nom = String(body.nom || "").trim();
-        const email = String(body.email || "").trim().toLowerCase();
-        const password = String(body.password || "");
-
-        if (!nom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          return json({
-            success: false,
-            message: "Nom ou adresse e-mail invalide."
-          }, 400);
-        }
-
-        if (password.length < 12 || password.length > 128) {
-          return json({
-            success: false,
-            message: "Le mot de passe doit contenir entre 12 et 128 caractères."
-          }, 400);
-        }
-
-        const passwordHash = await hashPassword(password);
-
-        await env.DB.prepare(`
-          INSERT INTO administrateurs
-            (nom, email, mot_de_passe_hash, role, statut)
-          VALUES (?, ?, ?, 'admin_principal', 'actif')
-        `).bind(nom, email, passwordHash).run();
-
+      // Création initiale désactivée : le compte principal existe déjà.
+      if (path === "/api/admin/setup") {
         return json({
-          success: true,
-          message: "Compte administrateur principal créé."
-        }, 201);
+          success: false,
+          message: "La création initiale des administrateurs est désactivée."
+        }, 410);
       }
 
       // Connexion administrateur
