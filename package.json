@@ -1,4 +1,3 @@
-
 {
   "name": "posy2security",
   "version": "1.0.0",
@@ -9,6 +8,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
-    "@vercel/blob": "^2.3.0"
+    "@vercel/blob": "^2.3.0",
+    "busboy": "^1.6.0"
   }
 }
