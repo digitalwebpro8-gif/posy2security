@@ -132,7 +132,7 @@ export default {
     const path = url.pathname;
 
     try {
-      // Vérification de la connexion D1
+      // Vérification de la connexion D1 et du secret de configuration
       if (path === "/api/status" && request.method === "GET") {
         const result = await env.DB.prepare(`
           SELECT name FROM sqlite_master
@@ -144,6 +144,7 @@ export default {
         return json({
           success: true,
           message: "Connexion à la base POSY2SECURITY réussie.",
+          hasSetupKey: Boolean(env.ADMIN_SETUP_KEY),
           tables: result.results
         });
       }
@@ -151,7 +152,10 @@ export default {
       // Création unique du premier administrateur principal
       if (path === "/api/admin/setup" && request.method === "POST") {
         if (!env.ADMIN_SETUP_KEY) {
-          return json({ success: false, message: "Configuration de sécurité absente." }, 503);
+          return json({
+            success: false,
+            message: "Configuration de sécurité absente."
+          }, 503);
         }
 
         const suppliedKey = request.headers.get("X-Admin-Setup-Key") || "";
@@ -159,7 +163,10 @@ export default {
         const suppliedHash = await sha256(suppliedKey);
 
         if (expectedHash !== suppliedHash) {
-          return json({ success: false, message: "Accès refusé." }, 403);
+          return json({
+            success: false,
+            message: "Accès refusé."
+          }, 403);
         }
 
         const count = await env.DB.prepare(
@@ -179,7 +186,10 @@ export default {
         const password = String(body.password || "");
 
         if (!nom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          return json({ success: false, message: "Nom ou adresse e-mail invalide." }, 400);
+          return json({
+            success: false,
+            message: "Nom ou adresse e-mail invalide."
+          }, 400);
         }
 
         if (password.length < 12 || password.length > 128) {
@@ -220,7 +230,10 @@ export default {
           admin.statut !== "actif" ||
           !(await verifyPassword(password, admin.mot_de_passe_hash))
         ) {
-          return json({ success: false, message: "Identifiants incorrects." }, 401);
+          return json({
+            success: false,
+            message: "Identifiants incorrects."
+          }, 401);
         }
 
         const token = randomToken();
@@ -252,7 +265,10 @@ export default {
         const admin = await getAdmin(request, env);
 
         if (!admin) {
-          return json({ success: false, message: "Session invalide ou expirée." }, 401);
+          return json({
+            success: false,
+            message: "Session invalide ou expirée."
+          }, 401);
         }
 
         return json({
@@ -275,7 +291,10 @@ export default {
           ).bind(await sha256(token)).run();
         }
 
-        return json({ success: true, message: "Déconnexion réussie." }, 200, {
+        return json({
+          success: true,
+          message: "Déconnexion réussie."
+        }, 200, {
           "Set-Cookie": sessionCookie("", 0)
         });
       }
