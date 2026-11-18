@@ -16,6 +16,7 @@ function json(data, status = 200, headers = {}) {
 function randomToken(bytes = 32) {
   const array = new Uint8Array(bytes);
   crypto.getRandomValues(array);
+
   return btoa(String.fromCharCode(...array))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
@@ -25,6 +26,7 @@ function randomToken(bytes = 32) {
 async function sha256(value) {
   const data = new TextEncoder().encode(value);
   const hash = await crypto.subtle.digest("SHA-256", data);
+
   return Array.from(new Uint8Array(hash))
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
@@ -34,10 +36,19 @@ function base64(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)));
 }
 
+// Décodage Base64 standard et URL-safe
 function fromBase64(value) {
-  return Uint8Array.from(atob(value), c => c.charCodeAt(0));
+  const normalized = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  return Uint8Array.from(
+    atob(normalized),
+    c => c.charCodeAt(0)
+  );
 }
 
+// Génération d'un hash de mot de passe
 async function hashPassword(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
@@ -63,11 +74,37 @@ async function hashPassword(password) {
   return `pbkdf2$${PBKDF2_ITERATIONS}$${base64(salt)}$${base64(result)}`;
 }
 
+// Vérification du mot de passe
 async function verifyPassword(password, stored) {
   try {
-    const [algorithm, iterations, saltValue, expected] = stored.split("$");
+    if (typeof stored !== "string") return false;
+
+    const parts = stored.split("$");
+
+    if (parts.length !== 4) return false;
+
+    const [algorithm, iterationsValue, saltValue, expected] = parts;
 
     if (algorithm !== "pbkdf2") return false;
+
+    const iterations = Number(iterationsValue);
+
+    if (
+      !Number.isInteger(iterations) ||
+      iterations < 100000 ||
+      iterations > 1000000
+    ) {
+      return false;
+    }
+
+    if (!saltValue || !expected) return false;
+
+    const salt = fromBase64(saltValue);
+    const expectedBytes = fromBase64(expected);
+
+    if (salt.length !== 16 || expectedBytes.length !== 32) {
+      return false;
+    }
 
     const key = await crypto.subtle.importKey(
       "raw",
@@ -80,44 +117,66 @@ async function verifyPassword(password, stored) {
     const result = await crypto.subtle.deriveBits(
       {
         name: "PBKDF2",
-        salt: fromBase64(saltValue),
-        iterations: Number(iterations),
+        salt,
+        iterations,
         hash: "SHA-256"
       },
       key,
       256
     );
 
-    const actual = base64(result);
+    const actualBytes = new Uint8Array(result);
 
-    return actual === expected;
-  } catch {
+    // Comparaison sans arrêt anticipé
+    let difference = 0;
+
+    for (let i = 0; i < actualBytes.length; i++) {
+      difference |= actualBytes[i] ^ expectedBytes[i];
+    }
+
+    return difference === 0;
+
+  } catch (error) {
+    console.error("Erreur de vérification du mot de passe :", error);
     return false;
   }
 }
 
+// Lecture d'un cookie
 function getCookie(request, name) {
   const cookies = request.headers.get("Cookie") || "";
-  const item = cookies.split(";").map(v => v.trim())
+
+  const item = cookies
+    .split(";")
+    .map(v => v.trim())
     .find(v => v.startsWith(name + "="));
 
   return item ? item.substring(name.length + 1) : null;
 }
 
+// Création du cookie de session
 function sessionCookie(token, maxAge) {
   return `posy_session=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
 }
 
+// Vérification de la session administrateur
 async function getAdmin(request, env) {
   const token = getCookie(request, "posy_session");
+
   if (!token) return null;
 
   const tokenHash = await sha256(token);
 
   const session = await env.DB.prepare(`
-    SELECT a.id, a.nom, a.email, a.role, a.statut
+    SELECT
+      a.id,
+      a.nom,
+      a.email,
+      a.role,
+      a.statut
     FROM sessions_admin s
-    JOIN administrateurs a ON a.id = s.administrateur_id
+    JOIN administrateurs a
+      ON a.id = s.administrateur_id
     WHERE s.jeton_hash = ?
       AND s.expiration > CURRENT_TIMESTAMP
       AND a.statut = 'actif'
@@ -132,12 +191,14 @@ export default {
     const path = url.pathname;
 
     try {
-      // Vérification de la connexion D1 et du secret de configuration
+
+      // État de la connexion à la base D1
       if (path === "/api/status" && request.method === "GET") {
         const result = await env.DB.prepare(`
-          SELECT name FROM sqlite_master
+          SELECT name
+          FROM sqlite_master
           WHERE type = 'table'
-          AND name NOT LIKE 'sqlite_%'
+            AND name NOT LIKE 'sqlite_%'
           ORDER BY name
         `).all();
 
@@ -148,7 +209,7 @@ export default {
         });
       }
 
-      // Création initiale désactivée : le compte principal existe déjà.
+      // Création initiale des administrateurs désactivée
       if (path === "/api/admin/setup") {
         return json({
           success: false,
@@ -159,11 +220,28 @@ export default {
       // Connexion administrateur
       if (path === "/api/admin/login" && request.method === "POST") {
         const body = await request.json();
-        const email = String(body.email || "").trim().toLowerCase();
+
+        const email = String(body.email || "")
+          .trim()
+          .toLowerCase();
+
         const password = String(body.password || "");
 
+        if (!email || !password) {
+          return json({
+            success: false,
+            message: "Veuillez renseigner votre adresse e-mail et votre mot de passe."
+          }, 400);
+        }
+
         const admin = await env.DB.prepare(`
-          SELECT id, nom, email, mot_de_passe_hash, role, statut
+          SELECT
+            id,
+            nom,
+            email,
+            mot_de_passe_hash,
+            role,
+            statut
           FROM administrateurs
           WHERE email = ?
         `).bind(email).first();
@@ -181,14 +259,20 @@ export default {
 
         const token = randomToken();
         const tokenHash = await sha256(token);
-        const expiration = new Date(Date.now() + SESSION_DURATION)
-          .toISOString().replace("T", " ").slice(0, 19);
+
+        const expiration = new Date(
+          Date.now() + SESSION_DURATION
+        ).toISOString().replace("T", " ").slice(0, 19);
 
         await env.DB.prepare(`
           INSERT INTO sessions_admin
             (administrateur_id, jeton_hash, expiration)
           VALUES (?, ?, ?)
-        `).bind(admin.id, tokenHash, expiration).run();
+        `).bind(
+          admin.id,
+          tokenHash,
+          expiration
+        ).run();
 
         return json({
           success: true,
@@ -199,7 +283,10 @@ export default {
             role: admin.role
           }
         }, 200, {
-          "Set-Cookie": sessionCookie(token, SESSION_DURATION / 1000)
+          "Set-Cookie": sessionCookie(
+            token,
+            SESSION_DURATION / 1000
+          )
         });
       }
 
@@ -224,14 +311,15 @@ export default {
         });
       }
 
-      // Déconnexion
+      // Déconnexion administrateur
       if (path === "/api/admin/logout" && request.method === "POST") {
         const token = getCookie(request, "posy_session");
 
         if (token) {
-          await env.DB.prepare(
-            "DELETE FROM sessions_admin WHERE jeton_hash = ?"
-          ).bind(await sha256(token)).run();
+          await env.DB.prepare(`
+            DELETE FROM sessions_admin
+            WHERE jeton_hash = ?
+          `).bind(await sha256(token)).run();
         }
 
         return json({
