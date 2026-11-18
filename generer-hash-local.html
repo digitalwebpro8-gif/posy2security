@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Générateur local de hash | POSY2SECURITY</title>
+<style>
+body {
+  margin: 0;
+  padding: 25px;
+  background: #101d32;
+  font-family: Arial, sans-serif;
+  color: #17243a;
+}
+.card {
+  max-width: 520px;
+  margin: 35px auto;
+  padding: 28px;
+  background: white;
+  border-radius: 14px;
+}
+h1 { color: #101d32; font-size: 23px; }
+p { line-height: 1.5; color: #64748b; }
+label {
+  display: block;
+  margin: 18px 0 7px;
+  font-weight: bold;
+}
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 16px;
+}
+button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  background: #c69b35;
+  border: 0;
+  border-radius: 7px;
+  font-weight: bold;
+  cursor: pointer;
+}
+#result {
+  display: none;
+  margin-top: 20px;
+  padding: 12px;
+  background: #f1f5f9;
+  border-radius: 7px;
+  overflow-wrap: anywhere;
+}
+#message { margin-top: 15px; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>POSY2SECURITY</h1>
+  <p>Générateur local de hash sécurisé pour le compte administrateur.</p>
+
+  <label for="password">Nouveau mot de passe</label>
+  <input id="password" type="password" maxlength="128"
+    autocomplete="new-password" placeholder="Saisir le nouveau mot de passe">
+
+  <label for="confirm">Confirmer le mot de passe</label>
+  <input id="confirm" type="password" maxlength="128"
+    autocomplete="new-password" placeholder="Confirmer le mot de passe">
+
+  <button id="generate" type="button">Générer le hash</button>
+
+  <p id="message" role="status"></p>
+
+  <div id="result">
+    <strong>Hash généré :</strong>
+    <p id="hash"></p>
+    <button id="copy" type="button">Copier le hash</button>
+  </div>
+</main>
+
+<script>
+const passwordInput = document.getElementById("password");
+const confirmInput = document.getElementById("confirm");
+const message = document.getElementById("message");
+const result = document.getElementById("result");
+const hashOutput = document.getElementById("hash");
+
+function base64(bytes) {
+  return btoa(String.fromCharCode(...new Uint8Array(bytes)));
+}
+
+async function generateHash(password) {
+  const iterations = 310000;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+
+  const derived = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: iterations,
+      hash: "SHA-256"
+    },
+    key,
+    256
+  );
+
+  return "pbkdf2$" + iterations + "$" +
+    base64(salt) + "$" + base64(derived);
+}
+
+document.getElementById("generate").addEventListener("click", async () => {
+  const password = passwordInput.value;
+  const confirmation = confirmInput.value;
+
+  result.style.display = "none";
+  message.textContent = "";
+
+  if (password.length < 12) {
+    message.textContent = "Le mot de passe doit contenir au moins 12 caractères.";
+    return;
+  }
+
+  if (password !== confirmation) {
+    message.textContent = "Les deux mots de passe ne correspondent pas.";
+    return;
+  }
+
+  if (!window.crypto || !crypto.subtle) {
+    message.textContent = "La génération sécurisée nécessite HTTPS.";
+    return;
+  }
+
+  const button = document.getElementById("generate");
+  button.disabled = true;
+  button.textContent = "Génération en cours...";
+
+  try {
+    const hash = await generateHash(password);
+    hashOutput.textContent = hash;
+    result.style.display = "block";
+    message.textContent = "Hash généré localement avec succès.";
+    passwordInput.value = "";
+    confirmInput.value = "";
+  } catch (error) {
+    message.textContent = "Erreur lors de la génération du hash.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Générer le hash";
+  }
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(hashOutput.textContent);
+    message.textContent = "Hash copié.";
+  } catch (error) {
+    message.textContent = "Copie impossible. Sélectionne le hash manuellement.";
+  }
+});
+</script>
+</body>
+</html>
