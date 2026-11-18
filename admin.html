@@ -344,6 +344,20 @@
     .service-toggle { background:#fff1e2; color:#8b5c12; }
     #serviceAdminMessage { margin:12px 0; font-size:13px; }
 
+    .application-admin { background:#fff; padding:22px; border:1px solid var(--border); border-radius:11px; }
+    .application-admin h3 { margin:0 0 8px; color:var(--navy); }
+    .application-admin p { color:var(--muted); font-size:13px; }
+    .application-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:15px 0; }
+    .application-refresh { border:0; border-radius:7px; padding:10px 14px; background:var(--gold); color:var(--navy); font-weight:bold; cursor:pointer; }
+    .application-list { display:grid; gap:13px; }
+    .application-card { border:1px solid var(--border); border-radius:9px; padding:16px; display:grid; gap:10px; }
+    .application-card h4 { margin:0; color:var(--navy); }
+    .application-meta { display:flex; flex-wrap:wrap; gap:8px 16px; color:var(--muted); font-size:12px; }
+    .application-message { white-space:pre-wrap; line-height:1.5; font-size:13px; color:var(--text); }
+    .application-status { display:inline-block; width:max-content; padding:5px 9px; border-radius:20px; background:#edf0f5; color:var(--navy); font-size:11px; font-weight:bold; }
+    .application-download { display:inline-block; width:max-content; text-decoration:none; border-radius:7px; padding:9px 12px; background:var(--navy); color:#fff; font-size:12px; font-weight:bold; }
+    #applicationAdminMessage { margin:12px 0; font-size:13px; }
+
     footer {
       padding: 20px 30px;
       color: var(--muted);
@@ -561,6 +575,19 @@
           </div>
         </div>
 
+        <div id="applicationsSection" class="hidden">
+          <div class="application-admin">
+            <h3>Gestion des candidatures</h3>
+            <p>Consultez les dossiers reçus et téléchargez les CV. Cette rubrique est réservée aux administrateurs connectés.</p>
+            <div class="application-toolbar">
+              <strong id="applicationCount">Chargement des candidatures...</strong>
+              <button class="application-refresh" id="applicationRefresh" type="button">Actualiser la liste</button>
+            </div>
+            <div id="applicationAdminMessage" role="status"></div>
+            <div id="applicationList" class="application-list"><p>Chargement des dossiers...</p></div>
+          </div>
+        </div>
+
         <div id="dashboardMessage" class="loading-text" role="status"></div>
       </div>
 
@@ -684,14 +711,17 @@
 
         const isHome = section === "Accueil";
         const isServices = section === "Services";
+        const isApplications = section === "Candidatures";
         document.getElementById("homeSection").classList.toggle("hidden", !isHome);
-        document.getElementById("otherSection").classList.toggle("hidden", isHome || isServices);
+        document.getElementById("otherSection").classList.toggle("hidden", isHome || isServices || isApplications);
         document.getElementById("servicesSection").classList.toggle("hidden", !isServices);
+        document.getElementById("applicationsSection").classList.toggle("hidden", !isApplications);
 
-        if (!isHome && !isServices) {
+        if (!isHome && !isServices && !isApplications) {
           document.getElementById("otherTitle").textContent = section;
         }
         if (isServices) loadAdminServices();
+        if (isApplications) loadAdminApplications();
       });
     });
 
@@ -801,6 +831,73 @@
       document.getElementById("serviceCancel").classList.add("hidden");
       showServiceMessage("");
     });
+
+    const applicationList = document.getElementById("applicationList");
+    const applicationMessage = document.getElementById("applicationAdminMessage");
+
+    function showApplicationMessage(message, isError = false) {
+      applicationMessage.textContent = message;
+      applicationMessage.style.color = isError ? "var(--red)" : "var(--green)";
+    }
+
+    function formatApplicationDate(value) {
+      if (!value) return "Date inconnue";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "Date inconnue" : date.toLocaleString("fr-FR");
+    }
+
+    async function loadAdminApplications() {
+      applicationList.innerHTML = "<p>Chargement des dossiers...</p>";
+      document.getElementById("applicationCount").textContent = "Chargement...";
+      showApplicationMessage("");
+
+      try {
+        const response = await fetch("/api/admin/candidatures", {
+          method:"GET",
+          credentials:"same-origin"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Impossible de charger les candidatures.");
+        }
+
+        const items = data.candidatures || [];
+        document.getElementById("applicationCount").textContent =
+          items.length + (items.length > 1 ? " candidatures reçues" : " candidature reçue");
+
+        if (!items.length) {
+          applicationList.innerHTML = "<p>Aucune candidature reçue pour le moment.</p>";
+          return;
+        }
+
+        applicationList.innerHTML = items.map(item => {
+          const cvLink = item.cv_url
+            ? '<a class="application-download" href="/api/admin/cv?pathname=' +
+              encodeURIComponent(item.cv_url) + '">Télécharger le CV (PDF)</a>'
+            : '<span class="application-status">Aucun CV joint</span>';
+
+          return `
+            <article class="application-card">
+              <h4>${escapeHtml(item.nom)}</h4>
+              <div class="application-meta">
+                <span>Poste : ${escapeHtml(item.poste || "Non précisé")}</span>
+                <span>Téléphone : ${escapeHtml(item.telephone || "Non renseigné")}</span>
+                <span>E-mail : ${escapeHtml(item.email || "Non renseigné")}</span>
+                <span>Reçue le : ${escapeHtml(formatApplicationDate(item.date_creation))}</span>
+              </div>
+              <span class="application-status">Statut : ${escapeHtml(item.statut || "nouveau")}</span>
+              ${item.message ? '<div class="application-message">' + escapeHtml(item.message) + '</div>' : ''}
+              ${cvLink}
+            </article>`;
+        }).join("");
+      } catch (error) {
+        applicationList.innerHTML = "<p>Une erreur est survenue pendant le chargement.</p>";
+        document.getElementById("applicationCount").textContent = "Liste indisponible";
+        showApplicationMessage(error.message, true);
+      }
+    }
+
+    document.getElementById("applicationRefresh").addEventListener("click", loadAdminApplications);
 
     async function checkExistingSession() {
       try {
