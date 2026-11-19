@@ -1,42 +1,5 @@
 import { handleUpload } from "@vercel/blob/client";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-async function readJsonBody(req) {
-  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) {
-    return req.body;
-  }
-
-  if (typeof req.body === "string") {
-    return JSON.parse(req.body);
-  }
-
-  const chunks = [];
-  let total = 0;
-
-  for await (const chunk of req) {
-    total += chunk.length;
-
-    if (total > 32 * 1024) {
-      throw new Error("Demande de téléversement trop volumineuse.");
-    }
-
-    chunks.push(Buffer.from(chunk));
-  }
-
-  const raw = Buffer.concat(chunks).toString("utf8");
-
-  if (!raw) {
-    throw new Error("Demande de téléversement vide.");
-  }
-
-  return JSON.parse(raw);
-}
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -47,10 +10,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = await readJsonBody(req);
-
+    // Vercel analyse automatiquement le corps JSON de la requête.
     const result = await handleUpload({
-      body,
+      body: req.body,
       request: req,
       token: process.env.BLOB_READ_WRITE_TOKEN,
       onBeforeGenerateToken: async (pathname) => {
