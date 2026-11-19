@@ -1,4 +1,4 @@
-import { getDb } from "./_lib/auth.js";
+import { getDb } from "../lib/auth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
