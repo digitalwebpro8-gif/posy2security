@@ -1,5 +1,5 @@
 import { head, get, del } from "@vercel/blob";
-import { getDb } from "./_lib/auth.js";
+import { getDb } from "../lib/auth.js";
 
 export const config = {
   api: {
