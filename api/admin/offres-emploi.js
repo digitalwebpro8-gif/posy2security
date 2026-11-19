@@ -3,7 +3,7 @@ import {
   getCookie,
   hashSessionToken,
   SESSION_COOKIE
-} from "../_lib/auth.js";
+} from "../../lib/auth.js";
 
 async function verifyAdmin(req) {
   const token = getCookie(req, SESSION_COOKIE);
