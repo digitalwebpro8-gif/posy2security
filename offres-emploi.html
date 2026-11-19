@@ -288,7 +288,7 @@ applicationForm.addEventListener('submit',async event=>{
   submit.disabled=true;
   submit.textContent='Envoi en cours...';
   try{
-    const { upload } = await import('https://cdn.jsdelivr.net/npm/@vercel/blob@2.3.0/client/+esm');
+    const { upload } = await import('https://cdn.jsdelivr.net/npm/@vercel/blob@2.6.1/client/+esm');
     const pathname='candidatures/'+crypto.randomUUID()+'.pdf';
     applicationFeedback.textContent='Téléversement sécurisé du CV en cours...';
     const blob=await upload(pathname,cv,{
