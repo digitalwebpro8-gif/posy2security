@@ -6,7 +6,7 @@ import {
   hashSessionToken,
   setSessionCookie,
   SESSION_DURATION
-} from "../_lib/auth.js";
+} from "../../lib/auth.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
