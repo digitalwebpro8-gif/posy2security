@@ -115,7 +115,7 @@ async function handleContactSubmission(req, res) {
   const dateColumn = pickColumn(columns, ["date_creation", "created_at"]);
   const insertColumns = mapping.map(([column]) => column);
   const values = mapping.map(([, value]) => value);
-  const placeholders = values.map((_, index) => `${index + 1}`);
+  const placeholders = values.map((_, index) => `$${index + 1}`);
   if (dateColumn) {
     insertColumns.push(dateColumn);
     placeholders.push("NOW()");
