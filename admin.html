@@ -862,7 +862,10 @@
             "Environnement : " + brevoData.environment +
             " | URL : " + brevoData.deploymentUrl +
             " | Projet : " + brevoData.projectId +
-            " | Dépôt : " + brevoData.repository;
+            " | Dépôt : " + brevoData.repository +
+            " | Variable présente : " + brevoData.brevoVariableExists +
+            " | Type : " + brevoData.brevoVariableType +
+            " | Longueur : " + brevoData.brevoValueLength;
           message.style.color = brevoData.brevoKeyConfigured ? "var(--green)" : "var(--red)";
         } else {
           message.textContent = "Diagnostic Brevo indisponible.";
