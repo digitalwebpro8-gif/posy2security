@@ -857,9 +857,12 @@
         const brevoCheck = await fetch("/api/candidatures?type=brevo-check", { credentials:"same-origin" });
         const brevoData = await brevoCheck.json();
         if (brevoCheck.ok && brevoData.success) {
-          message.textContent = brevoData.brevoKeyConfigured
-            ? "Diagnostic Brevo : clé API détectée."
-            : "Diagnostic Brevo : clé API absente dans cet environnement.";
+          message.textContent =
+            (brevoData.brevoKeyConfigured ? "Diagnostic Brevo : clé API détectée. " : "Diagnostic Brevo : clé API absente. ") +
+            "Environnement : " + brevoData.environment +
+            " | URL : " + brevoData.deploymentUrl +
+            " | Projet : " + brevoData.projectId +
+            " | Dépôt : " + brevoData.repository;
           message.style.color = brevoData.brevoKeyConfigured ? "var(--green)" : "var(--red)";
         } else {
           message.textContent = "Diagnostic Brevo indisponible.";
