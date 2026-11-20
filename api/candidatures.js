@@ -1,5 +1,5 @@
 import { head, get, del } from "@vercel/blob";
-import { getDb } from "../lib/auth.js";
+import { getDb, getCookie, hashSessionToken, SESSION_COOKIE } from "../lib/auth.js";
 
 export const config = {
   api: {
@@ -52,7 +52,144 @@ async function hasPdfSignature(pathname) {
   return prefix.subarray(0, 5).toString("ascii") === "%PDF-";
 }
 
+async function verifyAdmin(req) {
+  const token = getCookie(req, SESSION_COOKIE);
+  if (!token) return null;
+  const sql = getDb();
+  const tokenHash = hashSessionToken(token);
+  const admins = await sql`
+    SELECT a.id
+    FROM sessions_admin s
+    INNER JOIN administrateurs a ON a.id = s.administrateur_id
+    WHERE s.jeton_hash = ${tokenHash}
+      AND s.expiration > NOW()
+      AND a.statut = 'actif'
+    LIMIT 1
+  `;
+  return admins[0] || null;
+}
+
+function pickColumn(columns, choices) {
+  return choices.find(name => columns.has(name)) || null;
+}
+
+async function handleContactSubmission(req, res) {
+  const body = await readJsonBody(req);
+  if (clean(body.website, 200)) {
+    return res.status(200).json({ success:true, message:"Votre message a bien été reçu." });
+  }
+
+  const nom = clean(body.nom, 160);
+  const telephone = clean(body.telephone, 40);
+  const email = clean(body.email, 254).toLowerCase();
+  const sujet = clean(body.sujet, 160) || "Demande via le site";
+  const message = clean(body.message, 4000);
+
+  if (!nom || !telephone || message.length < 8) {
+    return res.status(400).json({
+      success:false,
+      message:"Veuillez renseigner votre nom, votre téléphone et un message d'au moins 8 caractères."
+    });
+  }
+  if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    return res.status(400).json({ success:false, message:"L'adresse e-mail est invalide." });
+  }
+
+  const sql = getDb();
+  const schema = await sql`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contacts'
+  `;
+  const columns = new Set(schema.map(row => row.column_name));
+  if (!columns.size) throw new Error("La table contacts est introuvable.");
+
+  const mapping = [
+    [pickColumn(columns, ["nom", "name", "full_name"]), nom],
+    [pickColumn(columns, ["telephone", "phone"]), telephone],
+    [pickColumn(columns, ["email"]), email || null],
+    [pickColumn(columns, ["sujet", "objet", "subject"]), sujet],
+    [pickColumn(columns, ["message", "contenu"]), message],
+    [pickColumn(columns, ["statut", "status"]), "nouveau"]
+  ].filter(([column]) => column);
+
+  const dateColumn = pickColumn(columns, ["date_creation", "created_at"]);
+  const insertColumns = mapping.map(([column]) => column);
+  const values = mapping.map(([, value]) => value);
+  const placeholders = values.map((_, index) => `${index + 1}`);
+  if (dateColumn) {
+    insertColumns.push(dateColumn);
+    placeholders.push("NOW()");
+  }
+
+  if (!insertColumns.some(name => ["nom", "name", "full_name"].includes(name)) ||
+      !insertColumns.some(name => ["message", "contenu"].includes(name))) {
+    throw new Error("La structure de la table contacts ne contient pas les champs requis.");
+  }
+
+  const inserted = await sql.query(
+    `INSERT INTO contacts (${insertColumns.join(", ")}) VALUES (${placeholders.join(", ")}) RETURNING id`,
+    values
+  );
+  return res.status(201).json({
+    success:true,
+    message:"Votre message a bien été envoyé. Notre équipe vous recontactera.",
+    id:inserted[0]?.id ?? null
+  });
+}
+
+async function handleAdminContacts(req, res) {
+  const admin = await verifyAdmin(req);
+  if (!admin) {
+    return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+  }
+
+  const sql = getDb();
+  const schema = await sql`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'contacts'
+  `;
+  const columns = new Set(schema.map(row => row.column_name));
+  if (!columns.size) throw new Error("La table contacts est introuvable.");
+
+  const fields = [
+    ["id", pickColumn(columns, ["id"])],
+    ["nom", pickColumn(columns, ["nom", "name", "full_name"])],
+    ["telephone", pickColumn(columns, ["telephone", "phone"])],
+    ["email", pickColumn(columns, ["email"])],
+    ["sujet", pickColumn(columns, ["sujet", "objet", "subject"])],
+    ["message", pickColumn(columns, ["message", "contenu"])],
+    ["statut", pickColumn(columns, ["statut", "status"])],
+    ["date_creation", pickColumn(columns, ["date_creation", "created_at"])]
+  ];
+  const selected = fields.filter(([, column]) => column)
+    .map(([alias, column]) => column === alias ? column : `${column} AS ${alias}`);
+  const orderColumn = pickColumn(columns, ["date_creation", "created_at", "id"]);
+  const order = orderColumn ? ` ORDER BY ${orderColumn} DESC` : "";
+  const contacts = await sql.query(
+    `SELECT ${selected.join(", ")} FROM contacts${order} LIMIT 200`,
+    []
+  );
+  return res.status(200).json({ success:true, contacts });
+}
+
 export default async function handler(req, res) {
+  const mode = String(req.query?.type || "");
+
+  try {
+    if (req.method === "POST" && mode === "contact") {
+      return await handleContactSubmission(req, res);
+    }
+    if (req.method === "GET" && mode === "contacts") {
+      return await handleAdminContacts(req, res);
+    }
+  } catch (error) {
+    console.error("Erreur gestion contacts:", error);
+    return res.status(500).json({
+      success:false,
+      message:"Impossible de traiter cette demande pour le moment."
+    });
+  }
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({
