@@ -226,11 +226,17 @@ async function handleBrevoCheck(req, res) {
   if (!admin) {
     return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
   }
-  const configured = typeof process.env.BREVO_API_KEY === "string" &&
+  const variableExists = Object.prototype.hasOwnProperty.call(process.env, "BREVO_API_KEY");
+  const variableType = typeof process.env.BREVO_API_KEY;
+  const variableLength = variableType === "string" ? process.env.BREVO_API_KEY.length : null;
+  const configured = variableType === "string" &&
     process.env.BREVO_API_KEY.trim().length > 0;
   return res.status(200).json({
     success:true,
     brevoKeyConfigured:configured,
+    brevoVariableExists:variableExists,
+    brevoVariableType:variableType,
+    brevoValueLength:variableLength,
     environment:process.env.VERCEL_ENV || "indéterminé",
     deploymentUrl:process.env.VERCEL_URL || "indisponible",
     projectId:process.env.VERCEL_PROJECT_ID || "indisponible",
