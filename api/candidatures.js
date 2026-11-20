@@ -137,6 +137,81 @@ async function handleContactSubmission(req, res) {
   });
 }
 
+
+async function handleAdminContactReply(req, res) {
+  const admin = await verifyAdmin(req);
+  if (!admin) {
+    return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+  }
+
+  const body = await readJsonBody(req);
+  const contactId = Number(body.contact_id);
+  const reponse = clean(body.reponse, 5000);
+  if (!Number.isSafeInteger(contactId) || contactId <= 0 || reponse.length < 2) {
+    return res.status(400).json({ success:false, message:"Veuillez sélectionner un message et rédiger une réponse." });
+  }
+
+  const sql = getDb();
+  const contacts = await sql`
+    SELECT id, nom, email, sujet
+    FROM contacts
+    WHERE id = ${contactId}
+    LIMIT 1
+  `;
+  const contact = contacts[0];
+  if (!contact) return res.status(404).json({ success:false, message:"Message introuvable." });
+  if (!contact.email) return res.status(400).json({ success:false, message:"Ce contact n'a pas renseigné d'adresse e-mail." });
+
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error("La variable BREVO_API_KEY n'est pas configurée dans Vercel.");
+
+  const subject = clean(body.sujet, 180) || (contact.sujet ? "Re : " + contact.sujet : "Réponse à votre message - POSY2SECURITY");
+  const emailResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method:"POST",
+    headers:{
+      "accept":"application/json",
+      "api-key":apiKey,
+      "content-type":"application/json"
+    },
+    body:JSON.stringify({
+      sender:{ name:"POSY2SECURITY", email:"digitalwebpro8@gmail.com" },
+      to:[{ email:contact.email, name:contact.nom || "Client" }],
+      subject,
+      textContent:reponse,
+      htmlContent:"<div style='font-family:Arial,sans-serif;line-height:1.6;white-space:pre-wrap'>" +
+        reponse.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>") +
+        "<br><br><strong>POSY2SECURITY</strong></div>"
+    })
+  });
+
+  const emailData = await emailResponse.json().catch(() => ({}));
+  if (!emailResponse.ok) {
+    console.error("Erreur API Brevo:", emailData);
+    return res.status(502).json({
+      success:false,
+      message:emailData.message || "Brevo n'a pas accepté l'envoi. Vérifiez l'expéditeur et les paramètres du compte."
+    });
+  }
+
+  await sql`
+    INSERT INTO contact_replies (contact_id, destinataire, sujet, reponse, statut_envoi)
+    VALUES (${contactId}, ${contact.email}, ${subject}, ${reponse}, 'envoye')
+  `;
+
+  const statusColumn = await sql`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='contacts'
+      AND column_name IN ('statut','status')
+    LIMIT 1
+  `;
+  if (statusColumn.length) {
+    const column = statusColumn[0].column_name;
+    await sql.query(`UPDATE contacts SET ${column} = $1 WHERE id = $2`, ["repondu", contactId]);
+  }
+
+  return res.status(200).json({ success:true, message:"Réponse envoyée avec succès.", messageId:emailData.messageId || null });
+}
+
 async function handleAdminContacts(req, res) {
   const admin = await verifyAdmin(req);
   if (!admin) {
@@ -169,7 +244,23 @@ async function handleAdminContacts(req, res) {
     `SELECT ${selected.join(", ")} FROM contacts${order} LIMIT 200`,
     []
   );
-  return res.status(200).json({ success:true, contacts });
+  const replyRows = await sql`
+    SELECT id, contact_id, destinataire, sujet, reponse, statut_envoi, date_envoi
+    FROM contact_replies
+    WHERE contact_id = ANY(${contacts.map(item => Number(item.id))})
+    ORDER BY date_envoi ASC
+  `;
+  const repliesByContact = {};
+  for (const reply of replyRows) {
+    const key = String(reply.contact_id);
+    if (!repliesByContact[key]) repliesByContact[key] = [];
+    repliesByContact[key].push(reply);
+  }
+  const contactsWithReplies = contacts.map(item => ({
+    ...item,
+    reponses: repliesByContact[String(item.id)] || []
+  }));
+  return res.status(200).json({ success:true, contacts:contactsWithReplies });
 }
 
 export default async function handler(req, res) {
@@ -181,6 +272,9 @@ export default async function handler(req, res) {
     }
     if (req.method === "GET" && mode === "contacts") {
       return await handleAdminContacts(req, res);
+    }
+    if (req.method === "POST" && mode === "reply") {
+      return await handleAdminContactReply(req, res);
     }
   } catch (error) {
     console.error("Erreur gestion contacts:", error);
