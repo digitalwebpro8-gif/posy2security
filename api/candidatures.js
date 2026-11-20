@@ -198,16 +198,13 @@ async function handleAdminContactReply(req, res) {
     VALUES (${contactId}, ${contact.email}, ${subject}, ${reponse}, 'envoye')
   `;
 
-  const statusColumn = await sql`
-    SELECT column_name FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='contacts'
-      AND column_name IN ('statut','status')
-    LIMIT 1
+  // La table contacts du projet utilise la colonne "statut".
+  // Utiliser la requête Neon balisée évite un appel dynamique non nécessaire.
+  await sql`
+    UPDATE contacts
+    SET statut = 'repondu'
+    WHERE id = ${contactId}
   `;
-  if (statusColumn.length) {
-    const column = statusColumn[0].column_name;
-    await sql.query(`UPDATE contacts SET ${column} = $1 WHERE id = $2`, ["repondu", contactId]);
-  }
 
   return res.status(200).json({ success:true, message:"Réponse envoyée avec succès.", messageId:emailData.messageId || null });
 }
@@ -277,7 +274,7 @@ export default async function handler(req, res) {
       return await handleAdminContactReply(req, res);
     }
   } catch (error) {
-    console.error("Erreur gestion contacts:", error);
+    console.error("Erreur gestion contacts:", error?.stack || error?.message || error);
     return res.status(500).json({
       success:false,
       message:"Impossible de traiter cette demande pour le moment."
