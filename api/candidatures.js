@@ -228,7 +228,14 @@ async function handleBrevoCheck(req, res) {
   }
   const configured = typeof process.env.BREVO_API_KEY === "string" &&
     process.env.BREVO_API_KEY.trim().length > 0;
-  return res.status(200).json({ success:true, brevoKeyConfigured:configured });
+  return res.status(200).json({
+    success:true,
+    brevoKeyConfigured:configured,
+    environment:process.env.VERCEL_ENV || "indéterminé",
+    deploymentUrl:process.env.VERCEL_URL || "indisponible",
+    projectId:process.env.VERCEL_PROJECT_ID || "indisponible",
+    repository:process.env.VERCEL_GIT_REPO_SLUG || "indisponible"
+  });
 }
 
 async function handleAdminContacts(req, res) {
