@@ -221,6 +221,16 @@ async function handleAdminContactReply(req, res) {
   }
 }
 
+async function handleBrevoCheck(req, res) {
+  const admin = await verifyAdmin(req);
+  if (!admin) {
+    return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+  }
+  const configured = typeof process.env.BREVO_API_KEY === "string" &&
+    process.env.BREVO_API_KEY.trim().length > 0;
+  return res.status(200).json({ success:true, brevoKeyConfigured:configured });
+}
+
 async function handleAdminContacts(req, res) {
   const admin = await verifyAdmin(req);
   if (!admin) {
@@ -278,6 +288,9 @@ export default async function handler(req, res) {
   try {
     if (req.method === "POST" && mode === "contact") {
       return await handleContactSubmission(req, res);
+    }
+    if (req.method === "GET" && mode === "brevo-check") {
+      return await handleBrevoCheck(req, res);
     }
     if (req.method === "GET" && mode === "contacts") {
       return await handleAdminContacts(req, res);
