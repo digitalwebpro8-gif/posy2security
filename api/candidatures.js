@@ -247,8 +247,8 @@ async function handleAdminContacts(req, res) {
   const replyRows = await sql`
     SELECT id, contact_id, destinataire, sujet, reponse, statut_envoi, date_envoi
     FROM contact_replies
-    WHERE contact_id = ANY(${contacts.map(item => Number(item.id))})
-    ORDER BY date_envoi ASC
+    ORDER BY date_envoi DESC
+    LIMIT 2000
   `;
   const repliesByContact = {};
   for (const reply of replyRows) {
