@@ -139,11 +139,14 @@ async function handleContactSubmission(req, res) {
 
 
 async function handleAdminContactReply(req, res) {
+  let stage = "vérification de la session administrateur";
+  try {
   const admin = await verifyAdmin(req);
   if (!admin) {
     return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
   }
 
+  stage = "lecture des données du formulaire";
   const body = await readJsonBody(req);
   const contactId = Number(body.contact_id);
   const reponse = clean(body.reponse, 5000);
@@ -151,6 +154,7 @@ async function handleAdminContactReply(req, res) {
     return res.status(400).json({ success:false, message:"Veuillez sélectionner un message et rédiger une réponse." });
   }
 
+  stage = "recherche du message dans la base de données";
   const sql = getDb();
   const contacts = await sql`
     SELECT id, nom, email, sujet
@@ -162,9 +166,11 @@ async function handleAdminContactReply(req, res) {
   if (!contact) return res.status(404).json({ success:false, message:"Message introuvable." });
   if (!contact.email) return res.status(400).json({ success:false, message:"Ce contact n'a pas renseigné d'adresse e-mail." });
 
+  stage = "vérification de la clé API Brevo";
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) throw new Error("La variable BREVO_API_KEY n'est pas configurée dans Vercel.");
 
+  stage = "envoi du courriel avec Brevo";
   const subject = clean(body.sujet, 180) || (contact.sujet ? "Re : " + contact.sujet : "Réponse à votre message - POSY2SECURITY");
   const emailResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
     method:"POST",
@@ -193,11 +199,13 @@ async function handleAdminContactReply(req, res) {
     });
   }
 
+  stage = "enregistrement de la réponse dans Neon";
   await sql`
     INSERT INTO contact_replies (contact_id, destinataire, sujet, reponse, statut_envoi)
     VALUES (${contactId}, ${contact.email}, ${subject}, ${reponse}, 'envoye')
   `;
 
+  stage = "mise à jour du statut du message dans Neon";
   // La table contacts du projet utilise la colonne "statut".
   // Utiliser la requête Neon balisée évite un appel dynamique non nécessaire.
   await sql`
@@ -207,6 +215,10 @@ async function handleAdminContactReply(req, res) {
   `;
 
   return res.status(200).json({ success:true, message:"Réponse envoyée avec succès.", messageId:emailData.messageId || null });
+  } catch (error) {
+    console.error("Erreur réponse contact à l’étape:", stage, error?.stack || error?.message || error);
+    return res.status(500).json({ success:false, message:"Échec à l’étape : " + stage + ". Aucune nouvelle tentative avant vérification." });
+  }
 }
 
 async function handleAdminContacts(req, res) {
