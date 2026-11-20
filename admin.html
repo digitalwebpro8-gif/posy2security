@@ -357,6 +357,12 @@
     .application-status { display:inline-block; width:max-content; padding:5px 9px; border-radius:20px; background:#edf0f5; color:var(--navy); font-size:11px; font-weight:bold; }
     .application-download { display:inline-block; width:max-content; text-decoration:none; border-radius:7px; padding:9px 12px; background:var(--navy); color:#fff; font-size:12px; font-weight:bold; }
     #applicationAdminMessage { margin:12px 0; font-size:13px; }
+    .contact-reply-form { display:grid; gap:9px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    .contact-reply-form label { font-size:12px; font-weight:bold; color:var(--navy); }
+    .contact-reply-form textarea { width:100%; min-height:95px; resize:vertical; padding:11px; border:1px solid var(--border); border-radius:7px; font:inherit; }
+    .contact-reply-form button:disabled { opacity:.6; cursor:wait; }
+    .contact-reply-feedback { font-size:12px; }
+    .contact-reply-history { display:grid; gap:7px; }
 
     .job-admin { background:#fff; padding:22px; border:1px solid var(--border); border-radius:11px; }
     .job-admin h3 { margin:0 0 8px; color:var(--navy); }
@@ -866,7 +872,55 @@
             </div>
             <span class="application-status">Statut : ${escapeHtml(item.statut || "nouveau")}</span>
             <div class="application-message">${escapeHtml(item.message || "")}</div>
+            <div class="contact-reply-history">
+              ${(item.reponses || []).map(reply => `
+                <div class="application-status">Réponse envoyée le ${escapeHtml(formatContactDate(reply.date_envoi))}</div>
+                <div class="application-message">${escapeHtml(reply.reponse)}</div>
+              `).join("")}
+            </div>
+            ${item.email ? `
+              <form class="contact-reply-form" data-contact-id="${Number(item.id)}">
+                <label>Votre réponse au client</label>
+                <textarea name="reponse" rows="4" maxlength="5000" required placeholder="Rédigez votre réponse ici..."></textarea>
+                <button class="application-refresh" type="submit">Envoyer la réponse</button>
+                <span class="contact-reply-feedback" role="status"></span>
+              </form>
+            ` : '<span class="application-status">Réponse par e-mail impossible : adresse non renseignée.</span>'}
           </article>`).join("");
+
+        list.querySelectorAll(".contact-reply-form").forEach(form => {
+          form.addEventListener("submit", async event => {
+            event.preventDefault();
+            const button = form.querySelector("button");
+            const feedback = form.querySelector(".contact-reply-feedback");
+            const textarea = form.querySelector("textarea");
+            const reponse = textarea.value.trim();
+            if (!reponse) return;
+            button.disabled = true;
+            button.textContent = "Envoi en cours...";
+            feedback.textContent = "";
+            try {
+              const response = await fetch("/api/candidatures?type=reply", {
+                method:"POST",
+                credentials:"same-origin",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({contact_id:Number(form.dataset.contactId), reponse})
+              });
+              const result = await response.json();
+              if (!response.ok || !result.success) throw new Error(result.message || "Envoi impossible.");
+              feedback.textContent = result.message || "Réponse envoyée.";
+              feedback.style.color = "var(--green)";
+              textarea.value = "";
+              await loadAdminContacts();
+            } catch (error) {
+              feedback.textContent = error.message;
+              feedback.style.color = "var(--red)";
+            } finally {
+              button.disabled = false;
+              button.textContent = "Envoyer la réponse";
+            }
+          });
+        });
       } catch (error) {
         list.innerHTML = "<p>La liste des messages est indisponible.</p>";
         count.textContent = "Liste indisponible";
