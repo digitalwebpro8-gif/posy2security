@@ -842,7 +842,7 @@
       message.textContent = "";
 
       try {
-        const response = await fetch("/api/admin/contacts", { credentials:"same-origin" });
+        const response = await fetch("/api/candidatures?type=contacts", { credentials:"same-origin" });
         const data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data.message || "Impossible de charger les messages.");
