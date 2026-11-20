@@ -91,7 +91,7 @@ async function handleContactSubmission(req, res) {
       message:"Veuillez renseigner votre nom, votre téléphone et un message d'au moins 8 caractères."
     });
   }
-  if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ success:false, message:"L'adresse e-mail est invalide." });
   }
 
