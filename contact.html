@@ -222,7 +222,7 @@ if(contactForm){
     note.style.color='#687386';
     note.textContent='Enregistrement de votre message...';
     try{
-      const response=await fetch('/api/contacts',{
+      const response=await fetch('/api/candidatures?type=contact',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
