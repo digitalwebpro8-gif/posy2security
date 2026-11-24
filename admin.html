@@ -467,7 +467,29 @@
           Se connecter
         </button>
 
+        <div style="text-align:center;margin-top:16px">
+          <a href="#" id="forgotPasswordLink" style="color:var(--navy);font-size:13px;font-weight:bold;text-decoration:none">
+            Mot de passe oublié ?
+          </a>
+        </div>
+
         <div id="loginMessage" class="message" role="status"></div>
+      </form>
+
+      <form id="forgotPasswordForm" class="hidden" style="margin-top:22px;border-top:1px solid var(--border);padding-top:20px">
+        <h2 style="font-size:18px;color:var(--navy);margin:0 0 8px">Réinitialiser le mot de passe</h2>
+        <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 18px">
+          Saisissez l'adresse e-mail associée à votre compte administrateur. Vous pourrez recevoir un lien sécurisé pour choisir un nouveau mot de passe.
+        </p>
+        <div class="field">
+          <label for="resetEmail">Adresse e-mail</label>
+          <input type="email" id="resetEmail" placeholder="Votre adresse e-mail" autocomplete="email" required>
+        </div>
+        <button class="primary-btn" type="submit" id="resetRequestButton">Recevoir le lien</button>
+        <div id="resetMessage" class="message" role="status"></div>
+        <div style="text-align:center;margin-top:14px">
+          <a href="#" id="backToLoginLink" style="color:var(--navy);font-size:13px;text-decoration:none">Retour à la connexion</a>
+        </div>
       </form>
     </div>
   </section>
@@ -696,6 +718,33 @@
     const loginForm = document.getElementById("loginForm");
     const loginButton = document.getElementById("loginButton");
     const loginMessage = document.getElementById("loginMessage");
+    const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+    const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+    const backToLoginLink = document.getElementById("backToLoginLink");
+
+    forgotPasswordLink.addEventListener("click", function(event) {
+      event.preventDefault();
+      loginForm.classList.add("hidden");
+      forgotPasswordForm.classList.remove("hidden");
+      document.getElementById("resetEmail").value =
+        document.getElementById("email").value.trim();
+      document.getElementById("resetMessage").textContent = "";
+      document.getElementById("resetEmail").focus();
+    });
+
+    backToLoginLink.addEventListener("click", function(event) {
+      event.preventDefault();
+      forgotPasswordForm.classList.add("hidden");
+      loginForm.classList.remove("hidden");
+      document.getElementById("email").focus();
+    });
+
+    forgotPasswordForm.addEventListener("submit", function(event) {
+      event.preventDefault();
+      document.getElementById("resetMessage").textContent =
+        "Le formulaire est prêt. L'envoi du lien sécurisé sera activé après le raccordement du service de messagerie.";
+      document.getElementById("resetMessage").className = "message";
+    });
 
     function showLogin(message = "") {
       dashboardScreen.classList.add("hidden");
