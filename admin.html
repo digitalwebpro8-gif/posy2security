@@ -485,7 +485,10 @@
           <label for="resetEmail">Adresse e-mail</label>
           <input type="email" id="resetEmail" placeholder="Votre adresse e-mail" autocomplete="email" required>
         </div>
-        <button class="primary-btn" type="submit" id="resetRequestButton">Recevoir le lien</button>
+        <div class="field"><label for="recoveryKey">Clé de récupération temporaire</label><input type="password" id="recoveryKey" autocomplete="off" required></div>
+        <div class="field"><label for="newAdminPassword">Nouveau mot de passe (12 caractères minimum)</label><input type="password" id="newAdminPassword" minlength="12" autocomplete="new-password" required></div>
+        <div class="field"><label for="confirmAdminPassword">Confirmer le nouveau mot de passe</label><input type="password" id="confirmAdminPassword" minlength="12" autocomplete="new-password" required></div>
+        <button class="primary-btn" type="submit" id="resetRequestButton">Réinitialiser mon mot de passe</button>
         <div id="resetMessage" class="message" role="status"></div>
         <div style="text-align:center;margin-top:14px">
           <a href="#" id="backToLoginLink" style="color:var(--navy);font-size:13px;text-decoration:none">Retour à la connexion</a>
