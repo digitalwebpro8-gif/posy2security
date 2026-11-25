@@ -613,6 +613,19 @@
           </div>
         </div>
 
+        <div id="devisSection" class="hidden">
+          <div class="application-admin">
+            <h3>Demandes de devis reçues</h3>
+            <p>Consultez les demandes transmises depuis le formulaire public.</p>
+            <div class="application-toolbar">
+              <strong id="devisCount">Chargement...</strong>
+              <button class="application-refresh" id="devisRefresh" type="button">Actualiser la liste</button>
+            </div>
+            <div id="devisAdminMessage" role="status"></div>
+            <div id="devisList" class="application-list"><p>Chargement...</p></div>
+          </div>
+        </div>
+
         <div id="servicesSection" class="hidden">
           <div class="service-admin">
             <h3>Gestion des prestations</h3>
@@ -884,20 +897,23 @@
 
         const isHome = section === "Accueil";
         const isContacts = section === "Contacts";
+        const isDevis = section === "Devis";
         const isServices = section === "Services";
         const isApplications = section === "Candidatures";
         const isJobs = section === "Offres d'emploi";
         document.getElementById("homeSection").classList.toggle("hidden", !isHome);
-        document.getElementById("otherSection").classList.toggle("hidden", isHome || isContacts || isServices || isApplications || isJobs);
+        document.getElementById("otherSection").classList.toggle("hidden", isHome || isContacts || isDevis || isServices || isApplications || isJobs);
         document.getElementById("contactsSection").classList.toggle("hidden", !isContacts);
+        document.getElementById("devisSection").classList.toggle("hidden", !isDevis);
         document.getElementById("servicesSection").classList.toggle("hidden", !isServices);
         document.getElementById("applicationsSection").classList.toggle("hidden", !isApplications);
         document.getElementById("jobsSection").classList.toggle("hidden", !isJobs);
 
-        if (!isHome && !isContacts && !isServices && !isApplications && !isJobs) {
+        if (!isHome && !isContacts && !isDevis && !isServices && !isApplications && !isJobs) {
           document.getElementById("otherTitle").textContent = section;
         }
         if (isContacts) loadAdminContacts();
+        if (isDevis) loadAdminDevis();
         if (isServices) loadAdminServices();
         if (isApplications) loadAdminApplications();
         if (isJobs) loadAdminJobs();
@@ -1016,6 +1032,45 @@
     }
 
     document.getElementById("contactRefresh").addEventListener("click", loadAdminContacts);
+
+    async function loadAdminDevis() {
+      const list = document.getElementById("devisList");
+      const count = document.getElementById("devisCount");
+      const message = document.getElementById("devisAdminMessage");
+      list.innerHTML = "<p>Chargement des demandes...</p>";
+      count.textContent = "Chargement...";
+      message.textContent = "";
+      try {
+        const response = await fetch("/api/candidatures?type=admin-devis", { credentials:"same-origin" });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Impossible de charger les demandes de devis.");
+        const items = data.devis || [];
+        count.textContent = items.length + (items.length > 1 ? " demandes reçues" : " demande reçue");
+        if (!items.length) {
+          list.innerHTML = "<p>Aucune demande de devis reçue pour le moment.</p>";
+          return;
+        }
+        list.innerHTML = items.map(item =>
+          "<article class=\"application-card\">" +
+          "<h4>" + escapeHtml(item.nom || "Client") + "</h4>" +
+          "<div class=\"application-meta\">" +
+          "<span>Entreprise : " + escapeHtml(item.entreprise || "Non renseignée") + "</span>" +
+          "<span>Téléphone : " + escapeHtml(item.telephone || "Non renseigné") + "</span>" +
+          "<span>E-mail : " + escapeHtml(item.email || "Non renseigné") + "</span>" +
+          "<span>Prestation : " + escapeHtml(item.service || "Non précisée") + "</span>" +
+          "<span>Reçue le : " + escapeHtml(formatContactDate(item.date_creation)) + "</span></div>" +
+          "<span class=\"application-status\">Statut : " + escapeHtml(item.statut || "nouveau") + "</span>" +
+          "<div class=\"application-message\">" + escapeHtml(item.description || "") + "</div></article>"
+        ).join("");
+      } catch (error) {
+        list.innerHTML = "<p>La liste des demandes de devis est indisponible.</p>";
+        count.textContent = "Liste indisponible";
+        message.textContent = error.message;
+        message.style.color = "var(--red)";
+      }
+    }
+
+    document.getElementById("devisRefresh").addEventListener("click", loadAdminDevis);
 
     async function loadAdminServices() {
       serviceList.innerHTML = "<p>Chargement des services...</p>";
