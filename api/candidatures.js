@@ -138,6 +138,45 @@ async function handleContactSubmission(req, res) {
 }
 
 
+
+async function handleQuoteSubmission(req, res) {
+  const body = await readJsonBody(req);
+  if (clean(body.website, 200)) return res.status(200).json({ success:true, message:"Votre demande a bien été reçue." });
+
+  const nom = clean(body.nom, 160);
+  const entreprise = clean(body.entreprise, 180);
+  const email = clean(body.email, 254).toLowerCase();
+  const telephone = clean(body.telephone, 40);
+  const service = clean(body.service, 180);
+  const description = clean(body.description, 4000);
+
+  if (!nom || !telephone || !service || description.length < 8) {
+    return res.status(400).json({ success:false, message:"Veuillez renseigner votre nom, votre téléphone, le service souhaité et décrire votre besoin (8 caractères minimum)." });
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success:false, message:"L'adresse e-mail est invalide." });
+  }
+
+  const sql = getDb();
+  const inserted = await sql`
+    INSERT INTO devis (nom, entreprise, email, telephone, service, description, statut, date_creation)
+    VALUES (${nom}, ${entreprise || null}, ${email || null}, ${telephone}, ${service}, ${description}, 'nouveau', NOW())
+    RETURNING id
+  `;
+  return res.status(201).json({ success:true, message:"Votre demande de devis a bien été envoyée. Notre équipe vous recontactera.", id:inserted[0].id });
+}
+
+async function handleAdminQuotes(req, res) {
+  const admin = await verifyAdmin(req);
+  if (!admin) return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+  const sql = getDb();
+  const devis = await sql`
+    SELECT id, nom, entreprise, email, telephone, service, description, statut, date_creation
+    FROM devis ORDER BY date_creation DESC, id DESC LIMIT 300
+  `;
+  return res.status(200).json({ success:true, devis });
+}
+
 async function handleAdminContactReply(req, res) {
   let stage = "vérification de la session administrateur";
   try {
