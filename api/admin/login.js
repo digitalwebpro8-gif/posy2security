@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import {
   getDb,
   verifyPassword,
@@ -17,14 +18,28 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, password } = req.body || {};
+    const { action, email, password, recoveryKey, newPassword } = req.body || {};
+    if (action === "recover") {
+      const configuredKey = process.env.ADMIN_RECOVERY_KEY;
+      if (typeof configuredKey !== "string" || configuredKey.length < 32) return res.status(503).json({ success:false, message:"Récupération temporaire non configurée." });
+      if (typeof recoveryKey !== "string" || recoveryKey.length !== configuredKey.length || !crypto.timingSafeEqual(Buffer.from(recoveryKey), Buffer.from(configuredKey))) return res.status(401).json({ success:false, message:"Clé de récupération incorrecte." });
+      if (typeof email !== "string" || typeof newPassword !== "string" || !email.trim() || newPassword.length < 12 || newPassword.length > 200) return res.status(400).json({ success:false, message:"E-mail invalide ou mot de passe trop court (12 caractères minimum)." });
+      const sql = getDb();
+      const admins = await sql`SELECT id, nom, email, role, statut FROM administrateurs WHERE LOWER(email) = LOWER(${email.trim()}) AND role = ${"admin_principal"} AND statut = ${"actif"} LIMIT 1`;
+      if (!admins.length) return res.status(404).json({ success:false, message:"Compte administrateur principal actif introuvable." });
+      const admin = admins[0];
+      const newHash = await hashPassword(newPassword);
+      await sql`UPDATE administrateurs SET mot_de_passe_hash = ${newHash} WHERE id = ${admin.id}`;
+      await sql`DELETE FROM sessions_admin WHERE administrateur_id = ${admin.id}`;
+      const token = createSessionToken();
+      const tokenHash = hashSessionToken(token);
+      const expiration = new Date(Date.now() + SESSION_DURATION * 1000);
+      await sql`INSERT INTO sessions_admin (administrateur_id, jeton_hash, expiration) VALUES (${admin.id}, ${tokenHash}, ${expiration.toISOString()})`;
+      setSessionCookie(res, token);
+      return res.status(200).json({ success:true, message:"Mot de passe réinitialisé. Désactivez maintenant la récupération temporaire dans Vercel.", administrateur:{ id:admin.id, nom:admin.nom, email:admin.email, role:admin.role } });
+    }
 
-    if (
-      typeof email !== "string" ||
-      typeof password !== "string" ||
-      !email.trim() ||
-      !password
-    ) {
+    if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
       return res.status(400).json({
         success: false,
         message: "Veuillez renseigner votre e-mail et votre mot de passe."
