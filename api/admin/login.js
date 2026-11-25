@@ -1,7 +1,7 @@
-
 import {
   getDb,
   verifyPassword,
+  hashPassword,
   createSessionToken,
   hashSessionToken,
   setSessionCookie,
@@ -49,14 +49,30 @@ export default async function handler(req, res) {
 
     const admin = admins[0];
 
-    if (
-      admin.statut !== "actif" ||
-      !(await verifyPassword(password, admin.mot_de_passe_hash))
-    ) {
+    if (admin.statut !== "actif") {
       return res.status(401).json({
         success: false,
         message: "Identifiants incorrects ou compte inactif."
       });
+    }
+
+    const passwordIsValid = await verifyPassword(password, admin.mot_de_passe_hash);
+    if (!passwordIsValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Identifiants incorrects ou compte inactif."
+      });
+    }
+
+    // Migration transparente des anciens hashes vers 310 000 itérations.
+    const hashIterations = Number(admin.mot_de_passe_hash.split("$")[1]);
+    if (hashIterations < 310000) {
+      const upgradedHash = await hashPassword(password);
+      await sql`
+        UPDATE administrateurs
+        SET mot_de_passe_hash = ${upgradedHash}
+        WHERE id = ${admin.id}
+      `;
     }
 
     const token = createSessionToken();
