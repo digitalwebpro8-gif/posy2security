@@ -934,24 +934,6 @@
           throw new Error(data.message || "Impossible de charger les messages.");
         }
 
-        const brevoCheck = await fetch("/api/candidatures?type=brevo-check", { credentials:"same-origin" });
-        const brevoData = await brevoCheck.json();
-        if (brevoCheck.ok && brevoData.success) {
-          message.textContent =
-            (brevoData.brevoKeyConfigured ? "Diagnostic Brevo : clé API détectée. " : "Diagnostic Brevo : clé API absente. ") +
-            "Environnement : " + brevoData.environment +
-            " | URL : " + brevoData.deploymentUrl +
-            " | Projet : " + brevoData.projectId +
-            " | Dépôt : " + brevoData.repository +
-            " | Variable présente : " + brevoData.brevoVariableExists +
-            " | Type : " + brevoData.brevoVariableType +
-            " | Longueur : " + brevoData.brevoValueLength;
-          message.style.color = brevoData.brevoKeyConfigured ? "var(--green)" : "var(--red)";
-        } else {
-          message.textContent = "Diagnostic Brevo indisponible.";
-          message.style.color = "var(--red)";
-        }
-
         const items = data.contacts || [];
         count.textContent = items.length + (items.length > 1 ? " messages reçus" : " message reçu");
         if (!items.length) {
