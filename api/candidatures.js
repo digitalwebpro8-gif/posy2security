@@ -341,6 +341,12 @@ export default async function handler(req, res) {
     if (req.method === "POST" && mode === "contact") {
       return await handleContactSubmission(req, res);
     }
+    if (req.method === "POST" && mode === "devis") {
+      return await handleQuoteSubmission(req, res);
+    }
+    if (req.method === "GET" && mode === "admin-devis") {
+      return await handleAdminQuotes(req, res);
+    }
     if (req.method === "GET" && mode === "brevo-check") {
       return await handleBrevoCheck(req, res);
     }
