@@ -742,11 +742,39 @@
       document.getElementById("email").focus();
     });
 
-    forgotPasswordForm.addEventListener("submit", function(event) {
+    forgotPasswordForm.addEventListener("submit", async function(event) {
       event.preventDefault();
-      document.getElementById("resetMessage").textContent =
-        "Le formulaire est prêt. L'envoi du lien sécurisé sera activé après le raccordement du service de messagerie.";
-      document.getElementById("resetMessage").className = "message";
+      const message = document.getElementById("resetMessage");
+      const button = document.getElementById("resetRequestButton");
+      const newPassword = document.getElementById("newAdminPassword").value;
+      if (newPassword !== document.getElementById("confirmAdminPassword").value) {
+        message.textContent = "Les deux mots de passe ne correspondent pas.";
+        message.className = "message error";
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "Réinitialisation en cours...";
+      try {
+        const response = await fetch("/api/admin/login", {
+          method:"POST", credentials:"same-origin",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({action:"recover", email:document.getElementById("resetEmail").value.trim(), recoveryKey:document.getElementById("recoveryKey").value, newPassword})
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Réinitialisation impossible.");
+        message.textContent = data.message;
+        message.className = "message success";
+        document.getElementById("recoveryKey").value = "";
+        document.getElementById("newAdminPassword").value = "";
+        document.getElementById("confirmAdminPassword").value = "";
+        await loadDashboard();
+      } catch (error) {
+        message.textContent = error.message;
+        message.className = "message error";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Réinitialiser mon mot de passe";
+      }
     });
 
     function showLogin(message = "") {
