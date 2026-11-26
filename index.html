@@ -157,7 +157,16 @@
 .partnership-seal{width:150px;height:150px;border:1px solid rgba(229,196,126,.65);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#e5c47e;transform:rotate(8deg);background:rgba(255,255,255,.035)}
 .partnership-seal span{font-size:12px;letter-spacing:3px}.partnership-seal strong{font-size:48px;line-height:1}.partnership-seal small{text-align:center;font-size:8px;letter-spacing:2px;line-height:1.5;margin-top:5px}
 .partnership-values{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:38px 0 30px}
-.partnership-values article{display:flex;gap:14px;padding:20px 17px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.055)}
+.partnership-value{min-width:0;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.055);transition:background .25s,border-color .25s,transform .25s}
+.partnership-value:hover{background:rgba(255,255,255,.10);border-color:rgba(229,196,126,.55);transform:translateY(-3px)}
+.partnership-value summary{display:flex;align-items:center;gap:14px;padding:20px 17px;cursor:pointer;list-style:none;min-height:100%;outline:none}
+.partnership-value summary::-webkit-details-marker{display:none}
+.partnership-value summary:focus-visible{outline:2px solid #e5c47e;outline-offset:3px;border-radius:10px}
+.partnership-value summary>div{flex:1}
+.value-toggle{flex:0 0 25px;width:25px;height:25px;display:grid;place-items:center;border:1px solid rgba(229,196,126,.5);border-radius:50%;color:#e5c47e;font-size:19px;line-height:1;transition:transform .25s}
+.partnership-value[open] .value-toggle{transform:rotate(45deg)}
+.value-detail{padding:0 17px 20px 65px}
+.value-detail p{font-size:12px;line-height:1.8;color:#d5deeb;margin:0;padding-top:13px;border-top:1px solid rgba(255,255,255,.13)}
 .value-number{flex:0 0 34px;width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:rgba(229,196,126,.14);color:#e5c47e;font-size:12px;font-weight:800}
 .partnership-values h3{font-size:14px;color:#fff;margin:1px 0 7px}.partnership-values p{font-size:12px;line-height:1.6;color:#c7d2e1;margin:0}
 .partnership-bottom{position:relative;display:flex;justify-content:space-between;align-items:center;gap:22px;padding-top:25px;border-top:1px solid rgba(255,255,255,.16)}
@@ -271,9 +280,18 @@
             <div class="partnership-seal" aria-hidden="true"><span>POSY</span><strong>2S</strong><small>CONFIANCE<br> &amp; SÉCURITÉ</small></div>
           </div>
           <div class="partnership-values">
-            <article><span class="value-number">01</span><div><h3>Confiance &amp; professionnalisme</h3><p>Des équipes engagées, attentives et encadrées.</p></div></article>
-            <article><span class="value-number">02</span><div><h3>Solutions sur mesure</h3><p>Des prestations pensées selon vos besoins et votre environnement.</p></div></article>
-            <article><span class="value-number">03</span><div><h3>Accompagnement durable</h3><p>Une relation de proximité et un suivi de vos prestations.</p></div></article>
+            <details class="partnership-value">
+              <summary><span class="value-number">01</span><div><h3>Confiance &amp; professionnalisme</h3><p>Des équipes engagées, attentives et encadrées.</p></div><span class="value-toggle" aria-hidden="true">+</span></summary>
+              <div class="value-detail"><p>POSY2SECURITY place le professionnalisme, la discipline et le sens des responsabilités au cœur de ses prestations. Nos équipes sont sensibilisées aux exigences de leurs missions, à la vigilance permanente, au respect des consignes et à la discrétion. Nous veillons à instaurer une relation de confiance avec chaque client grâce à une organisation rigoureuse et un comportement exemplaire sur le terrain.</p></div>
+            </details>
+            <details class="partnership-value">
+              <summary><span class="value-number">02</span><div><h3>Solutions sur mesure</h3><p>Des prestations pensées selon vos besoins et votre environnement.</p></div><span class="value-toggle" aria-hidden="true">+</span></summary>
+              <div class="value-detail"><p>Chaque environnement présente des risques et des exigences spécifiques. C'est pourquoi POSY2SECURITY privilégie une approche personnalisée. Après analyse de vos besoins, nous proposons des dispositifs adaptés à votre activité, à vos installations et à vos contraintes : surveillance des sites, contrôle des accès, gardiennage, sécurisation des événements et autres prestations de protection.</p></div>
+            </details>
+            <details class="partnership-value">
+              <summary><span class="value-number">03</span><div><h3>Accompagnement durable</h3><p>Une relation de proximité et un suivi de vos prestations.</p></div><span class="value-toggle" aria-hidden="true">+</span></summary>
+              <div class="value-detail"><p>Notre engagement ne se limite pas à la mise en place d'une prestation. Nous privilégions une collaboration durable fondée sur l'écoute, la disponibilité et le suivi. POSY2SECURITY reste attentif à l'évolution de vos besoins afin d'améliorer continuellement les dispositifs de sécurité et de vous accompagner dans la protection de vos personnes, de vos biens et de vos activités.</p></div>
+            </details>
           </div>
           <div class="partnership-bottom">
             <div><strong>Ensemble, faisons de votre sécurité une priorité.</strong><span>Entreprises • Institutions • Commerces • Événements • Particuliers</span></div>
