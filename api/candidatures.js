@@ -193,6 +193,38 @@ async function handleAdminQuotes(req, res) {
   return res.status(200).json({ success:true, devis:devisWithReplies });
 }
 
+async function handleAdminDeleteContact(req, res) {
+  const admin = await verifyAdmin(req);
+  if (!admin) return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+  const body = await readJsonBody(req);
+  const contactId = Number(body.contact_id);
+  if (!Number.isSafeInteger(contactId) || contactId <= 0) {
+    return res.status(400).json({ success:false, message:"Identifiant de message invalide." });
+  }
+  const sql = getDb();
+  const rows = await sql`SELECT id FROM contacts WHERE id = ${contactId} LIMIT 1`;
+  if (!rows.length) return res.status(404).json({ success:false, message:"Message introuvable." });
+  await sql`DELETE FROM contact_replies WHERE contact_id = ${contactId}`;
+  await sql`DELETE FROM contacts WHERE id = ${contactId}`;
+  return res.status(200).json({ success:true, message:"Message et historique supprimés." });
+}
+
+async function handleAdminDeleteDevis(req, res) {
+  const admin = await verifyAdmin(req);
+  if (!admin) return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+  const body = await readJsonBody(req);
+  const devisId = Number(body.devis_id);
+  if (!Number.isSafeInteger(devisId) || devisId <= 0) {
+    return res.status(400).json({ success:false, message:"Identifiant de demande invalide." });
+  }
+  const sql = getDb();
+  const rows = await sql`SELECT id FROM devis WHERE id = ${devisId} LIMIT 1`;
+  if (!rows.length) return res.status(404).json({ success:false, message:"Demande de devis introuvable." });
+  await sql`DELETE FROM devis_replies WHERE devis_id = ${devisId}`;
+  await sql`DELETE FROM devis WHERE id = ${devisId}`;
+  return res.status(200).json({ success:true, message:"Demande de devis et historique supprimés." });
+}
+
 async function handleAdminDevisReply(req, res) {
   let stage = "vérification de la session administrateur";
   try {
@@ -445,6 +477,12 @@ export default async function handler(req, res) {
     }
     if (req.method === "POST" && mode === "devis-reply") {
       return await handleAdminDevisReply(req, res);
+    }
+    if (req.method === "POST" && mode === "delete-contact") {
+      return await handleAdminDeleteContact(req, res);
+    }
+    if (req.method === "POST" && mode === "delete-devis") {
+      return await handleAdminDeleteDevis(req, res);
     }
   } catch (error) {
     console.error("Erreur gestion contacts:", error?.stack || error?.message || error);
