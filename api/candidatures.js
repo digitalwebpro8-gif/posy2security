@@ -174,7 +174,94 @@ async function handleAdminQuotes(req, res) {
     SELECT id, nom, entreprise, email, telephone, service, description, statut, date_creation
     FROM devis ORDER BY date_creation DESC, id DESC LIMIT 300
   `;
-  return res.status(200).json({ success:true, devis });
+  const replyRows = await sql`
+    SELECT id, devis_id, destinataire, sujet, reponse, statut_envoi, date_envoi
+    FROM devis_replies
+    ORDER BY date_envoi DESC
+    LIMIT 2000
+  `;
+  const repliesByDevis = {};
+  for (const reply of replyRows) {
+    const key = String(reply.devis_id);
+    if (!repliesByDevis[key]) repliesByDevis[key] = [];
+    repliesByDevis[key].push(reply);
+  }
+  const devisWithReplies = devis.map(item => ({
+    ...item,
+    reponses: repliesByDevis[String(item.id)] || []
+  }));
+  return res.status(200).json({ success:true, devis:devisWithReplies });
+}
+
+async function handleAdminDevisReply(req, res) {
+  let stage = "vérification de la session administrateur";
+  try {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(401).json({ success:false, message:"Connexion administrateur requise." });
+
+    stage = "lecture des données du formulaire";
+    const body = await readJsonBody(req);
+    const devisId = Number(body.devis_id);
+    const reponse = clean(body.reponse, 5000);
+    if (!Number.isSafeInteger(devisId) || devisId <= 0 || reponse.length < 2) {
+      return res.status(400).json({ success:false, message:"Veuillez sélectionner une demande et rédiger une réponse." });
+    }
+
+    stage = "recherche de la demande de devis";
+    const sql = getDb();
+    const rows = await sql`
+      SELECT id, nom, email, service
+      FROM devis
+      WHERE id = ${devisId}
+      LIMIT 1
+    `;
+    const devis = rows[0];
+    if (!devis) return res.status(404).json({ success:false, message:"Demande de devis introuvable." });
+    if (!devis.email) return res.status(400).json({ success:false, message:"Ce client n'a pas renseigné d'adresse e-mail." });
+
+    stage = "vérification de la clé API Brevo";
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) throw new Error("La variable BREVO_API_KEY n'est pas configurée dans Vercel.");
+
+    stage = "envoi du courriel avec Brevo";
+    const subject = clean(body.sujet, 180) || "Re : Demande de devis - POSY2SECURITY";
+    const safeReply = reponse.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+    const emailResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method:"POST",
+      headers:{
+        "accept":"application/json",
+        "api-key":apiKey,
+        "content-type":"application/json"
+      },
+      body:JSON.stringify({
+        sender:{ name:"POSY2SECURITY", email:"digitalwebpro8@gmail.com" },
+        to:[{ email:devis.email, name:devis.nom || "Client" }],
+        subject,
+        textContent:reponse,
+        htmlContent:"<div style='font-family:Arial,sans-serif;line-height:1.6;white-space:pre-wrap'>" +
+          safeReply + "<br><br><strong>POSY2SECURITY</strong></div>"
+      })
+    });
+    const emailData = await emailResponse.json().catch(() => ({}));
+    if (!emailResponse.ok) {
+      console.error("Erreur API Brevo devis:", emailData);
+      return res.status(502).json({ success:false, message:emailData.message || "Brevo n'a pas accepté l'envoi." });
+    }
+
+    stage = "enregistrement de la réponse dans Neon";
+    await sql`
+      INSERT INTO devis_replies (devis_id, destinataire, sujet, reponse, statut_envoi)
+      VALUES (${devisId}, ${devis.email}, ${subject}, ${reponse}, 'envoye')
+    `;
+    stage = "mise à jour du statut de la demande";
+    await sql`
+      UPDATE devis SET statut = 'repondu' WHERE id = ${devisId}
+    `;
+    return res.status(200).json({ success:true, message:"Réponse envoyée avec succès.", messageId:emailData.messageId || null });
+  } catch (error) {
+    console.error("Erreur réponse devis à l’étape:", stage, error?.stack || error?.message || error);
+    return res.status(500).json({ success:false, message:"Échec à l’étape : " + stage + ". Vérifiez les journaux avant toute nouvelle tentative." });
+  }
 }
 
 async function handleAdminContactReply(req, res) {
@@ -355,6 +442,9 @@ export default async function handler(req, res) {
     }
     if (req.method === "POST" && mode === "reply") {
       return await handleAdminContactReply(req, res);
+    }
+    if (req.method === "POST" && mode === "devis-reply") {
+      return await handleAdminDevisReply(req, res);
     }
   } catch (error) {
     console.error("Erreur gestion contacts:", error?.stack || error?.message || error);
