@@ -935,6 +935,30 @@
       }[char]));
     }
 
+    async function deleteAdminRecord(type, id, button, reload) {
+      const label = type === "delete-contact" ? "ce message de contact" : "cette demande de devis";
+      if (!confirm("Voulez-vous vraiment supprimer " + label + " ? Cette action est définitive.")) return;
+      button.disabled = true;
+      const originalText = button.textContent;
+      button.textContent = "Suppression...";
+      try {
+        const payload = type === "delete-contact" ? {contact_id:Number(id)} : {devis_id:Number(id)};
+        const response = await fetch("/api/candidatures?type=" + type, {
+          method:"POST",
+          credentials:"same-origin",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "Suppression impossible.");
+        await reload();
+      } catch (error) {
+        alert(error.message || "Une erreur est survenue pendant la suppression.");
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
     async function loadAdminContacts() {
       const list = document.getElementById("contactList");
       const count = document.getElementById("contactCount");
@@ -982,7 +1006,14 @@
                 <span class="contact-reply-feedback" role="status"></span>
               </form>
             ` : '<span class="application-status">Réponse par e-mail impossible : adresse non renseignée.</span>'}
+            <div class="service-actions" style="margin-top:12px">
+              <button class="service-toggle delete-contact-button" type="button" data-contact-delete="${Number(item.id)}">Supprimer</button>
+            </div>
           </article>`).join("");
+
+        list.querySelectorAll("[data-contact-delete]").forEach(button => {
+          button.addEventListener("click", () => deleteAdminRecord("delete-contact", button.dataset.contactDelete, button, loadAdminContacts));
+        });
 
         list.querySelectorAll(".contact-reply-form").forEach(form => {
           form.addEventListener("submit", async event => {
@@ -1075,8 +1106,13 @@
             "<span class=\"contact-reply-feedback\" role=\"status\"></span>" +
             "</form>"
             : "<span class=\"application-status\">Réponse par e-mail impossible : adresse non renseignée.</span>") +
+          "<div class=\"service-actions\" style=\"margin-top:12px\"><button class=\"service-toggle delete-devis-button\" type=\"button\" data-devis-delete=\"" + Number(item.id) + "\">Supprimer</button></div>" +
           "</article>"
         ).join("");
+
+        list.querySelectorAll("[data-devis-delete]").forEach(button => {
+          button.addEventListener("click", () => deleteAdminRecord("delete-devis", button.dataset.devisDelete, button, loadAdminDevis));
+        });
 
         list.querySelectorAll(".devis-reply-form").forEach(form => {
           form.addEventListener("submit", async event => {
