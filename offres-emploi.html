@@ -167,12 +167,16 @@
 .offer-meta-item{flex:1 1 42%;min-width:0;padding:2px 14px 2px 0;color:#293951;font-size:13px;overflow-wrap:anywhere}
 .offer-meta-item+.offer-meta-item{padding-left:17px;border-left:1px solid #e9edf1}
 .offer-meta-item span{display:block;color:#8992a0;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:1.1px;margin-bottom:4px}
-.offer-description{font-size:13px;color:#596679;line-height:1.8;white-space:pre-line;margin:0}
+.offer-description{font-size:13px;line-height:1.8;color:#596679;white-space:normal;text-align:left;margin:0}
 .offer-side{display:flex;flex-direction:column;gap:15px;padding:18px;background:#f7f8fa;border:1px solid #edf0f3;border-radius:4px}
 .offer-deadline{padding-bottom:13px;border-bottom:1px solid #e5e9ef;color:#7b8492;font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase}
 .offer-deadline strong{display:block;color:#172b49;font-size:15px;letter-spacing:0;text-transform:none;margin-top:5px}
 .offer-profile strong{display:block;color:#172b49;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.offer-profile p{font-size:12px;color:#5e697a;white-space:pre-line;line-height:1.75}
+.offer-profile p{font-size:12px;color:#5e697a;white-space:normal;line-height:1.75;text-align:left}
+.offer-description p{margin:0 0 12px;text-align:left}
+.offer-description ol{margin:8px 0 0;padding-left:24px;text-align:left}
+.offer-description li{padding-left:3px;margin:0 0 6px;text-align:left}
+.offer-profile p+p{margin-top:11px}
 .offer-card-footer{padding:14px 28px 14px 32px;background:#fbfbfc;border-top:1px solid #edf0f3;display:flex;justify-content:flex-end}
 .offer-card .applyOffer{display:inline-flex;align-items:center;justify-content:space-between;gap:24px;min-width:230px;border:0;border-radius:3px;padding:13px 17px;background:#102342;color:#fff;font-size:11px;font-weight:900;letter-spacing:.8px}
 .offer-card .applyOffer:hover{background:#c49a42;color:#102342;transform:none}
@@ -203,12 +207,12 @@
 .offer-meta{padding:15px 0;margin-bottom:18px}
 .offer-meta-item{font-size:13px;font-weight:700}
 .offer-meta-item span{font-size:9px;letter-spacing:1.25px}
-.offer-description{font-size:13px;line-height:1.85;color:#596679}
+.offer-description{font-size:13px;line-height:1.8;color:#596679;white-space:normal;text-align:left;margin:0}
 .offer-side{background:#f5f7fa;border:1px solid #e9edf2;border-radius:6px;padding:19px;gap:17px}
 .offer-deadline{display:flex;flex-direction:column;gap:5px;padding-bottom:15px;color:#7d8796;font-size:9px;letter-spacing:1.2px}
 .offer-deadline strong{display:inline-flex;align-self:flex-start;padding:7px 10px;border-radius:3px;background:#fff;border:1px solid #e7eaf0;color:#1b3152;font-size:13px;font-weight:800}
 .offer-profile strong{font-size:9px;letter-spacing:1.3px}
-.offer-profile p{font-size:12px;line-height:1.8}
+.offer-profile p{font-size:12px;color:#5e697a;white-space:normal;line-height:1.75;text-align:left}
 .offer-card-footer{padding:14px 30px 14px 35px;background:#fff;border-top:1px solid #edf0f3}
 .offer-card .applyOffer{min-width:250px;padding:14px 18px;background:#c49a42;color:#102342;border-radius:4px;font-size:10px;letter-spacing:1px}
 .offer-card .applyOffer:hover{background:#102342;color:#fff}
@@ -318,17 +322,17 @@ async function loadPublicOffers(){
       const title=escapeOffer(offer.titre);
       const location=escapeOffer(offer.lieu||'Non précisé');
       const contract=escapeOffer(offer.type_contrat||'Non précisé');
-      const description=escapeOffer(offer.description||'');
-      const profile=escapeOffer(offer.profil_recherche||'');
-      const deadline=offer.date_limite?new Date(offer.date_limite+'T00:00:00').toLocaleDateString('fr-FR'):'Non précisée';
+      const description=formatOfferDescription(offer.description||'');
+      const profile=formatOfferProfile(offer.profil_recherche||'');
+      const deadline=formatOfferDate(offer.date_limite);
       return '<article class="offer-card">'+
         '<div class="offer-card-body"><div class="offer-main">'+
         '<div class="offer-top"><span class="offer-tag">POSY2SECURITY · RECRUTEMENT</span></div>'+
         '<h3>'+title+'</h3>'+
         '<div class="offer-meta"><div class="offer-meta-item"><span>Localisation</span>'+location+'</div><div class="offer-meta-item"><span>Type de contrat</span>'+contract+'</div></div>'+
-        (description?'<p class="offer-description">'+description+'</p>':'')+
+        (description?'<div class="offer-description">'+description+'</div>':'')+
         '</div><aside class="offer-side"><div class="offer-deadline">Date limite de candidature<strong>'+escapeOffer(deadline)+'</strong></div>'+
-        (profile?'<div class="offer-profile"><strong>Profil recherché</strong><p>'+profile+'</p></div>':'<div class="offer-profile"><strong>Informations</strong><p>Consultez les détails du poste et soumettez votre candidature en ligne.</p></div>')+
+        (profile?'<div class="offer-profile"><strong>Profil recherché</strong>'+profile+'</div>':'<div class="offer-profile"><strong>Informations</strong><p>Consultez les détails du poste et soumettez votre candidature en ligne.</p></div>')+
         '</aside></div><div class="offer-card-footer">'+
         '<button class="btn applyOffer" type="button" data-poste="'+title+'">POSTULER À CETTE OFFRE <span aria-hidden="true">→</span></button>'+
         '</div></article>';
@@ -339,6 +343,31 @@ async function loadPublicOffers(){
 }
 function escapeOffer(value){
   return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+function formatOfferDate(value){
+  if(!value) return 'Non précisée';
+  const raw=String(value).trim();
+  let date;
+  const isoDate=raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+  if(isoDate) date=new Date(Date.UTC(Number(isoDate[1]),Number(isoDate[2])-1,Number(isoDate[3])));
+  else date=new Date(raw);
+  if(Number.isNaN(date.getTime())) return 'Non précisée';
+  return new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'long',year:'numeric',timeZone:'UTC'}).format(date);
+}
+function formatOfferDescription(value){
+  const lines=String(value).split(/\\r?\\n/).map(line=>line.trim()).filter(Boolean);
+  if(!lines.length) return '';
+  const intro=[],tasks=[];
+  lines.forEach(line=>{
+    const match=line.match(/^\\d+[.)]\\s*(.+)$/);
+    if(match) tasks.push(match[1]); else intro.push(line);
+  });
+  return intro.map(line=>'<p>'+escapeOffer(line)+'</p>').join('')+
+    (tasks.length?'<ol>'+tasks.map(task=>'<li>'+escapeOffer(task)+'</li>').join('')+'</ol>':'');
+}
+function formatOfferProfile(value){
+  return String(value).split(/\\r?\\n/).map(line=>line.trim()).filter(Boolean)
+    .map(line=>'<p>'+escapeOffer(line.replace(/^[•–-]\\s*/,''))+'</p>').join('');
 }
 loadPublicOffers();
 
