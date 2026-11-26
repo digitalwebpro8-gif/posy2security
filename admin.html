@@ -1060,8 +1060,57 @@
           "<span>Prestation : " + escapeHtml(item.service || "Non précisée") + "</span>" +
           "<span>Reçue le : " + escapeHtml(formatContactDate(item.date_creation)) + "</span></div>" +
           "<span class=\"application-status\">Statut : " + escapeHtml(item.statut || "nouveau") + "</span>" +
-          "<div class=\"application-message\">" + escapeHtml(item.description || "") + "</div></article>"
+          "<div class=\"application-message\">" + escapeHtml(item.description || "") + "</div>" +
+          "<div class=\"contact-reply-history\">" +
+          (item.reponses || []).map(reply =>
+            "<div class=\"application-status\">Réponse envoyée le " + escapeHtml(formatContactDate(reply.date_envoi)) + "</div>" +
+            "<div class=\"application-message\">" + escapeHtml(reply.reponse || "") + "</div>"
+          ).join("") +
+          "</div>" +
+          (item.email ?
+            "<form class=\"contact-reply-form devis-reply-form\" data-devis-id=\"" + Number(item.id) + "\">" +
+            "<label>Votre réponse au client</label>" +
+            "<textarea name=\"reponse\" rows=\"4\" maxlength=\"5000\" required placeholder=\"Rédigez votre réponse concernant cette demande de devis...\"></textarea>" +
+            "<button class=\"application-refresh\" type=\"submit\">Envoyer la réponse</button>" +
+            "<span class=\"contact-reply-feedback\" role=\"status\"></span>" +
+            "</form>"
+            : "<span class=\"application-status\">Réponse par e-mail impossible : adresse non renseignée.</span>") +
+          "</article>"
         ).join("");
+
+        list.querySelectorAll(".devis-reply-form").forEach(form => {
+          form.addEventListener("submit", async event => {
+            event.preventDefault();
+            const button = form.querySelector("button");
+            const feedback = form.querySelector(".contact-reply-feedback");
+            const textarea = form.querySelector("textarea");
+            const reponse = textarea.value.trim();
+            if (!reponse) return;
+            button.disabled = true;
+            button.textContent = "Envoi en cours...";
+            feedback.textContent = "";
+            try {
+              const response = await fetch("/api/candidatures?type=devis-reply", {
+                method:"POST",
+                credentials:"same-origin",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({devis_id:Number(form.dataset.devisId), reponse})
+              });
+              const result = await response.json();
+              if (!response.ok || !result.success) throw new Error(result.message || "Envoi impossible.");
+              feedback.textContent = result.message || "Réponse envoyée.";
+              feedback.style.color = "var(--green)";
+              textarea.value = "";
+              await loadAdminDevis();
+            } catch (error) {
+              feedback.textContent = error.message;
+              feedback.style.color = "var(--red)";
+            } finally {
+              button.disabled = false;
+              button.textContent = "Envoyer la réponse";
+            }
+          });
+        });
       } catch (error) {
         list.innerHTML = "<p>La liste des demandes de devis est indisponible.</p>";
         count.textContent = "Liste indisponible";
