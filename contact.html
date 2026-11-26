@@ -175,7 +175,7 @@
             <div class="field"><label for="name">Nom et prénom *</label><input id="name" name="name" required placeholder="Votre nom"></div>
             <div class="field"><label for="phone">Téléphone *</label><input id="phone" name="phone" required placeholder="Votre numéro"></div>
             <div class="field"><label for="email">Adresse e-mail</label><input id="email" name="email" type="email" placeholder="nom@exemple.com"></div>
-            <div class="field"><label for="subject">Objet de la demande</label><select id="subject" name="subject"><option>Demande de devis</option><option>Demande d'information</option><option>Candidature</option><option>Partenariat</option><option>Autre</option></select></div>
+            <div class="field"><label for="subject">Objet de la demande</label><select id="subject" name="subject"><option>Demande d'information</option><option>Candidature</option><option>Partenariat</option><option>Autre</option></select></div>
             <div class="field"><label for="company">Entreprise (facultatif)</label><input id="company" name="company" maxlength="180" placeholder="Nom de votre entreprise"></div>
             <div class="field"><label for="service">Service souhaité *</label><select id="service" name="service"><option value="">Choisir un service</option><option>Gardiennage et surveillance</option><option>Sécurité événementielle</option><option>Protection rapprochée</option><option>Conseil et audit en sécurité</option><option>Autre prestation</option></select></div>
             <div class="field full"><label for="message">Votre message *</label><textarea id="message" name="message" required minlength="8" maxlength="4000" placeholder="Décrivez brièvement votre besoin..."></textarea></div>
@@ -213,15 +213,6 @@ navLinks.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{
 }));
 document.getElementById('year').textContent=new Date().getFullYear();
 const contactForm=document.getElementById('contactForm');
-const subjectSelect=document.getElementById('subject');
-const serviceSelect=document.getElementById('service');
-const serviceLabel=document.querySelector('label[for="service"]');
-function updateServiceRequirement(){
-  const required=subjectSelect && subjectSelect.value==='Demande de devis';
-  if(serviceSelect) serviceSelect.required=required;
-  if(serviceLabel) serviceLabel.textContent=required?'Service souhaité *':'Service souhaité (facultatif)';
-}
-if(subjectSelect){subjectSelect.addEventListener('change',updateServiceRequirement);updateServiceRequirement();}
 if(contactForm){
   contactForm.addEventListener('submit',async event=>{
     event.preventDefault();
