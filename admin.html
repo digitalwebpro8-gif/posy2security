@@ -344,6 +344,12 @@
     .service-toggle { background:#fff1e2; color:#8b5c12; }
     #serviceAdminMessage { margin:12px 0; font-size:13px; }
 
+
+.news-admin{background:#fff;padding:22px;border:1px solid var(--border);border-radius:11px}.news-admin h3{margin:0 0 8px;color:var(--navy)}.news-admin p{color:var(--muted);font-size:13px;line-height:1.6}
+.news-form{display:grid;gap:13px;margin:18px 0 25px}.news-form label{display:block;font-size:12px;font-weight:bold;margin-bottom:6px;color:var(--navy)}.news-form input,.news-form textarea,.news-form select{width:100%;padding:12px;border:1px solid var(--border);border-radius:7px;font:inherit}.news-form textarea{min-height:150px;resize:vertical;line-height:1.6}
+.news-form-actions,.news-actions{display:flex;gap:8px;flex-wrap:wrap}.news-form button,.news-actions button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}.news-save{background:var(--gold);color:var(--navy)}.news-cancel{background:#edf0f5;color:var(--text)}
+.news-list{display:grid;gap:13px}.news-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:15px;border:1px solid var(--border);border-radius:9px}.news-row img{width:100%;height:115px;object-fit:cover;border-radius:7px;background:#edf0f5}.news-row h4{margin:0 0 7px;color:var(--navy)}.news-row p{margin:0 0 9px;white-space:pre-wrap;overflow-wrap:anywhere}.news-status{display:inline-block;padding:5px 9px;border-radius:20px;background:#edf0f5;color:var(--navy);font-size:11px;font-weight:bold;margin:0 0 10px}.news-status.published{background:#e8f6ef;color:var(--green)}.news-edit{background:#edf0f5;color:var(--navy)}.news-toggle{background:#fff1e2;color:#8b5c12}.news-delete{background:#fff1f1;color:var(--red)}#newsAdminMessage{margin:12px 0;font-size:13px}@media(max-width:600px){.news-row{grid-template-columns:1fr}.news-row img{height:180px}}
+
     .application-admin { background:#fff; padding:22px; border:1px solid var(--border); border-radius:11px; }
     .application-admin h3 { margin:0 0 8px; color:var(--navy); }
     .application-admin p { color:var(--muted); font-size:13px; }
@@ -654,6 +660,18 @@
           </div>
         </div>
 
+
+        <div id="actualitesSection" class="hidden"><div class="news-admin">
+          <h3>Gestion des actualités</h3><p>Rédigez les informations de POSY2SECURITY. Un brouillon reste privé ; un article publié apparaît sur le site public.</p>
+          <form id="newsForm" class="news-form"><input type="hidden" id="newsId">
+            <div><label for="newsTitle">Titre de l'article *</label><input id="newsTitle" maxlength="220" required placeholder="Ex. POSY2SECURITY renforce ses équipes"></div>
+            <div><label for="newsImage">Adresse de l'image (facultatif)</label><input id="newsImage" type="url" maxlength="1500" placeholder="https://..."></div>
+            <div><label for="newsContent">Contenu de l'article</label><textarea id="newsContent" maxlength="12000" placeholder="Rédigez votre actualité..."></textarea></div>
+            <div><label for="newsStatus">Statut de publication</label><select id="newsStatus"><option value="brouillon">Brouillon — non visible sur le site</option><option value="publie">Publié — visible sur le site</option></select></div>
+            <div class="news-form-actions"><button class="news-save" id="newsSubmit" type="submit">Enregistrer l'article</button><button class="news-cancel hidden" id="newsCancel" type="button">Annuler la modification</button></div>
+          </form><div id="newsAdminMessage" role="status"></div><h3>Articles enregistrés</h3><div id="newsList" class="news-list"><p>Chargement des actualités...</p></div>
+        </div></div>
+
         <div id="jobsSection" class="hidden">
           <div class="job-admin">
             <h3>Gestion des offres d'emploi</h3>
@@ -901,15 +919,17 @@
         const isServices = section === "Services";
         const isApplications = section === "Candidatures";
         const isJobs = section === "Offres d'emploi";
+        const isActualites = section === "Actualités";
         document.getElementById("homeSection").classList.toggle("hidden", !isHome);
-        document.getElementById("otherSection").classList.toggle("hidden", isHome || isContacts || isDevis || isServices || isApplications || isJobs);
+        document.getElementById("otherSection").classList.toggle("hidden", isHome || isContacts || isDevis || isServices || isApplications || isJobs || isActualites);
         document.getElementById("contactsSection").classList.toggle("hidden", !isContacts);
         document.getElementById("devisSection").classList.toggle("hidden", !isDevis);
         document.getElementById("servicesSection").classList.toggle("hidden", !isServices);
         document.getElementById("applicationsSection").classList.toggle("hidden", !isApplications);
         document.getElementById("jobsSection").classList.toggle("hidden", !isJobs);
+        document.getElementById("actualitesSection").classList.toggle("hidden", !isActualites);
 
-        if (!isHome && !isContacts && !isDevis && !isServices && !isApplications && !isJobs) {
+        if (!isHome && !isContacts && !isDevis && !isServices && !isApplications && !isJobs && !isActualites) {
           document.getElementById("otherTitle").textContent = section;
         }
         if (isContacts) loadAdminContacts();
@@ -917,6 +937,7 @@
         if (isServices) loadAdminServices();
         if (isApplications) loadAdminApplications();
         if (isJobs) loadAdminJobs();
+        if (isActualites) loadAdminActualites();
       });
     });
 
@@ -1314,6 +1335,20 @@
       }
     }
 
+
+
+const newsForm=document.getElementById("newsForm"),newsList=document.getElementById("newsList"),newsMessage=document.getElementById("newsAdminMessage");
+function showNewsMessage(message,isError=false){newsMessage.textContent=message;newsMessage.style.color=isError?"var(--red)":"var(--green)";}
+function resetNewsForm(){newsForm.reset();document.getElementById("newsId").value="";document.getElementById("newsStatus").value="brouillon";document.getElementById("newsSubmit").textContent="Enregistrer l'article";document.getElementById("newsCancel").classList.add("hidden");}
+async function saveNews(payload,silent=false){try{const response=await fetch("/api/admin/services?resource=actualites",{method:payload.id?"PUT":"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||"Enregistrement impossible.");if(!silent)resetNewsForm();showNewsMessage(data.message||"Article enregistré.");await loadAdminActualites();}catch(error){showNewsMessage(error.message||"Une erreur est survenue.",true);}}
+async function loadAdminActualites(){newsList.innerHTML="<p>Chargement des actualités...</p>";showNewsMessage("");try{const response=await fetch("/api/admin/services?resource=actualites",{credentials:"same-origin"});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||"Impossible de charger les actualités.");const items=data.actualites||[];if(!items.length){newsList.innerHTML="<p>Aucun article enregistré. Utilisez le formulaire ci-dessus pour ajouter votre première actualité.</p>";return;}
+newsList.innerHTML=items.map(item=>{const published=item.statut==="publie",excerpt=String(item.contenu||"").slice(0,240),image=item.image_url?'<img src="'+escapeHtml(item.image_url)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':"";return '<article class="news-row">'+image+'<div><h4>'+escapeHtml(item.titre)+'</h4><span class="news-status '+(published?"published":"")+'">'+(published?"Publié":"Brouillon")+'</span><p>'+escapeHtml(excerpt)+(String(item.contenu||"").length>240?"…":"")+'</p><div class="news-actions"><button class="news-edit" type="button" data-news-edit="'+item.id+'">Modifier</button><button class="news-toggle" type="button" data-news-toggle="'+item.id+'">'+(published?"Dépublier":"Publier")+'</button><button class="news-delete" type="button" data-news-delete="'+item.id+'">Supprimer</button></div></div></article>';}).join("");
+newsList.querySelectorAll("[data-news-edit]").forEach(button=>button.addEventListener("click",()=>{const item=items.find(entry=>String(entry.id)===button.dataset.newsEdit);if(!item)return;document.getElementById("newsId").value=item.id;document.getElementById("newsTitle").value=item.titre||"";document.getElementById("newsImage").value=item.image_url||"";document.getElementById("newsContent").value=item.contenu||"";document.getElementById("newsStatus").value=item.statut||"brouillon";document.getElementById("newsSubmit").textContent="Enregistrer les modifications";document.getElementById("newsCancel").classList.remove("hidden");document.getElementById("newsTitle").focus();}));
+newsList.querySelectorAll("[data-news-toggle]").forEach(button=>button.addEventListener("click",async()=>{const item=items.find(entry=>String(entry.id)===button.dataset.newsToggle);if(item)await saveNews({id:Number(item.id),titre:item.titre,contenu:item.contenu||"",image_url:item.image_url||"",statut:item.statut==="publie"?"brouillon":"publie"},true);}));
+newsList.querySelectorAll("[data-news-delete]").forEach(button=>button.addEventListener("click",async()=>{const item=items.find(entry=>String(entry.id)===button.dataset.newsDelete);if(!item||!confirm("Supprimer définitivement cet article ?"))return;button.disabled=true;try{const response=await fetch("/api/admin/services?resource=actualites",{method:"DELETE",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:Number(item.id)})});const result=await response.json();if(!response.ok||!result.success)throw new Error(result.message||"Suppression impossible.");showNewsMessage("Article supprimé.");await loadAdminActualites();}catch(error){showNewsMessage(error.message,true);button.disabled=false;}}));
+}catch(error){newsList.innerHTML="<p>Erreur lors du chargement des actualités.</p>";showNewsMessage(error.message,true);}}
+newsForm.addEventListener("submit",event=>{event.preventDefault();const id=document.getElementById("newsId").value;saveNews({...(id?{id:Number(id)}:{}),titre:document.getElementById("newsTitle").value.trim(),image_url:document.getElementById("newsImage").value.trim(),contenu:document.getElementById("newsContent").value.trim(),statut:document.getElementById("newsStatus").value});});
+document.getElementById("newsCancel").addEventListener("click",resetNewsForm);
 
     const jobForm = document.getElementById("jobForm");
     const jobList = document.getElementById("jobList");
