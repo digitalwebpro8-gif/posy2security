@@ -25,7 +25,17 @@ footer{background:#071124;color:#b9c3d1;padding:28px 0;font-size:12px}footer a{c
 .menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:42px;border:1px solid rgba(213,173,84,.55);border-radius:8px;background:rgba(255,255,255,.05);color:var(--gold2);font-size:22px;cursor:pointer}
 @media(max-width:1120px){.nav{min-height:72px;flex-wrap:nowrap}.menu-btn{display:inline-flex;margin-left:auto}.nav-links{display:none;position:absolute;top:calc(100% + 1px);left:0;right:0;z-index:80;flex-direction:column;align-items:stretch;gap:4px;padding:14px;background:#0b1730;border:1px solid rgba(213,173,84,.25);border-top:2px solid var(--gold);border-radius:0 0 12px 12px;box-shadow:0 18px 35px rgba(0,0,0,.28);max-height:calc(100vh - 90px);overflow-y:auto}.nav-links.open{display:flex}.nav-links a{min-height:43px;padding:0 13px}.nav-links a.active{box-shadow:inset 3px 0 0 var(--gold)}}
 @media(max-width:560px){.brand img{width:52px;height:52px}.nav{gap:10px}}
-</style></head><body>
+
+    /* Espacement renforcé du menu principal */
+    @media (min-width: 1101px){
+      header .nav-links{gap:12px !important;}
+      header .nav-links a{padding-left:9px !important;padding-right:9px !important;}
+    }
+    @media (min-width: 761px) and (max-width: 1100px){
+      header .nav-links{gap:9px !important;}
+      header .nav-links a{padding-left:8px !important;padding-right:8px !important;}
+    }
+    </style></head><body>
 <div class="top"><div class="container">POSY SECURITY AND SERVICES — Votre sécurité nous concerne !</div></div>
 <header><div class="container nav"><a class="brand" href="index.html"><img src="logo-posy.jpg" alt="Logo POSY2SECURITY"><span>POSY2SECURITY<span>SÉCURITÉ &amp; PROTECTION</span></span></a>
 <nav class="nav-links" id="navLinks"><a href="index.html">Accueil</a><a href="apropos.html">À propos</a><a href="services.html">Nos services</a><a href="moyens.html">Nos moyens</a><a href="references.html">Références</a><a href="offres-emploi.html">Offres d’emploi</a><a href="index.html#actualites">Actualités</a><a class="active" href="boutique.html" aria-current="page">Boutique</a><a href="contact.html">Contact</a></nav><button class="menu-btn" id="menuBtn" type="button" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
