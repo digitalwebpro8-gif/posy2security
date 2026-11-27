@@ -382,7 +382,7 @@ async function loadPublicNews(){
    const date=item.date_creation?new Date(item.date_creation).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';
    const content=String(item.contenu||'');const excerpt=content.length>210?content.slice(0,210).trim()+'…':content;
    const image=item.image_url?'<img src="'+escapePublicNews(item.image_url)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
-   const more=content.length>210?'<details><summary>Lire la suite →</summary><p>'+escapePublicNews(content)+'</p></details>':'';
+   const more=content.length>210?'<details><summary>Lire la suite →</summary><p>'+escapePublicNews(content.slice(210).trim())+'</p></details>':'';
    return '<article class="news-public-card">'+image+'<div class="news-public-body"><span class="news-public-date">'+date+'</span><h3>'+escapePublicNews(item.titre)+'</h3><p>'+escapePublicNews(excerpt)+'</p>'+more+'</div></article>';
   }).join('');
  }catch(error){container.innerHTML='<p class="news-public-empty">Les actualités sont momentanément indisponibles.</p>';}
