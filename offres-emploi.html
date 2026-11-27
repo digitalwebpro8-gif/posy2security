@@ -258,7 +258,17 @@ header .menu-btn{display:none;align-items:center;justify-content:center;width:44
  header .menu-btn{margin-left:auto}
 }
 
-</style></head><body>
+
+    /* Espacement renforcé du menu principal */
+    @media (min-width: 1101px){
+      header .nav-links{gap:12px !important;}
+      header .nav-links a{padding-left:9px !important;padding-right:9px !important;}
+    }
+    @media (min-width: 761px) and (max-width: 1100px){
+      header .nav-links{gap:9px !important;}
+      header .nav-links a{padding-left:8px !important;padding-right:8px !important;}
+    }
+    </style></head><body>
 
   <div class="topbar"><div class="container">
     <span>POSY2SECURITY — Professionnalisme • Vigilance • Confiance</span>
