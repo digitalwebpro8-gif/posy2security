@@ -195,6 +195,34 @@
 .news-public-card details{margin-top:auto}.news-public-card summary{cursor:pointer;color:#9b742e;font-weight:700;font-size:13px;list-style:none}.news-public-card summary::-webkit-details-marker{display:none}.news-public-card details[open] summary{margin-bottom:12px}
 .news-public-empty{grid-column:1/-1;color:#667085;text-align:center;padding:28px;background:#fff;border:1px dashed #d6dce5;border-radius:10px}
 @media(max-width:850px){.news-public-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.news-public{padding:58px 0}.news-public-grid{grid-template-columns:1fr}.news-public-card img{height:190px}}
+
+/* Navigation principale — finition professionnelle */
+header .nav{position:relative;min-height:82px;gap:18px}
+header .brand{flex:0 0 auto;gap:11px}
+header .nav-links{gap:5px;justify-content:center;flex:1;min-width:0;font-size:12px;font-weight:700;letter-spacing:.1px}
+header .nav-links a{display:inline-flex;align-items:center;min-height:39px;padding:0 10px;border-radius:6px;color:#e8edf5;white-space:nowrap;transition:background .2s,color .2s}
+header .nav-links a:hover{background:rgba(255,255,255,.08);color:var(--gold2)}
+header .nav-links a[aria-current="page"]{background:rgba(213,173,84,.13);color:var(--gold2);box-shadow:inset 0 -2px 0 var(--gold)}
+header .nav-cta{flex:0 0 auto;padding:12px 15px;border-radius:7px;box-shadow:0 5px 14px rgba(0,0,0,.16);white-space:nowrap}
+header .menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:42px;border:1px solid rgba(213,173,84,.55);border-radius:8px;background:rgba(255,255,255,.05);color:var(--gold2);font-size:22px;cursor:pointer}
+@media(max-width:1120px){
+ header .nav{height:72px;min-height:72px}
+ header .menu-btn{display:inline-flex}
+ header .nav-links{display:none;position:absolute;top:calc(100% + 1px);left:0;right:0;z-index:80;flex-direction:column;align-items:stretch;gap:4px;padding:14px;background:#0b1730;border:1px solid rgba(213,173,84,.25);border-top:2px solid var(--gold);border-radius:0 0 12px 12px;box-shadow:0 18px 35px rgba(0,0,0,.28);max-height:calc(100vh - 90px);overflow-y:auto}
+ header .nav-links.open{display:flex}
+ header .nav-links a{min-height:43px;padding:0 13px;border-radius:6px}
+ header .nav-links a[aria-current="page"]{box-shadow:inset 3px 0 0 var(--gold);background:rgba(213,173,84,.12)}
+ header .nav-cta{margin-left:auto}
+}
+@media(max-width:700px){
+ header .nav{gap:10px}
+ header .brand-logo{width:52px;height:52px}
+ header .brand{font-size:13px;letter-spacing:.8px}
+ header .brand small{font-size:8px;letter-spacing:1.5px}
+ header .nav-cta{display:none}
+ header .menu-btn{margin-left:auto}
+}
+
 </style></head><body>
 <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
 
